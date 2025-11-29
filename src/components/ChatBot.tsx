@@ -52,9 +52,49 @@ export const ChatBot = () => {
 
       if (error) throw error;
 
+      let assistantContent = data.choices[0]?.message?.content || 'Desculpe, não consegui processar sua mensagem.';
+      
+      // Check if AI wants to generate coupon
+      if (assistantContent.includes('[GENERATE_COUPON]')) {
+        assistantContent = assistantContent.replace('[GENERATE_COUPON]', '');
+        
+        // Try to generate coupon
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session) {
+          setMessages(prev => [...prev, {
+            role: 'assistant',
+            content: assistantContent + '\n\n❌ Você precisa estar logado para gerar um cupom. Por favor, faça login primeiro!'
+          }]);
+          setIsLoading(false);
+          return;
+        }
+
+        // Generate coupon
+        const { data: couponData, error: couponError } = await supabase.functions.invoke('generate-coupon', {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`
+          }
+        });
+
+        if (couponError || couponData.error) {
+          setMessages(prev => [...prev, {
+            role: 'assistant',
+            content: assistantContent + '\n\n❌ ' + (couponData?.error || 'Erro ao gerar cupom. Tente novamente mais tarde.')
+          }]);
+        } else {
+          setMessages(prev => [...prev, {
+            role: 'assistant',
+            content: assistantContent + '\n\n🎉 Seu cupom foi gerado com sucesso!\n\n🎫 Código: ' + couponData.coupon + '\n💰 Desconto: 6%\n⏰ Válido por 30 dias\n\n📋 Copie este código e use no carrinho de compras!'
+          }]);
+        }
+        setIsLoading(false);
+        return;
+      }
+
       const assistantMessage: Message = {
         role: 'assistant',
-        content: data.choices[0]?.message?.content || 'Desculpe, não consegui processar sua mensagem.'
+        content: assistantContent
       };
 
       setMessages(prev => [...prev, assistantMessage]);
