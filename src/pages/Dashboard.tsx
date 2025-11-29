@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react";
-import { User as UserIcon, Settings, CreditCard, LogOut, Shield, Camera } from "lucide-react";
+import { User as UserIcon, Settings, Wallet, LogOut, Shield, Camera, ArrowUpCircle, ArrowDownCircle, Send, History, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
@@ -14,6 +13,21 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
 import { Sidebar } from "@/components/Sidebar";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const Dashboard = () => {
   const { toast } = useToast();
@@ -25,6 +39,16 @@ const Dashboard = () => {
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"profile" | "settings" | "bank">("profile");
+  
+  // Wallet states
+  const [wallet, setWallet] = useState<any>(null);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [selectedCurrency, setSelectedCurrency] = useState<"USD" | "BRL" | "AOA">("BRL");
+  const [depositAmount, setDepositAmount] = useState("");
+  const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [transferAmount, setTransferAmount] = useState("");
+  const [recipientEmail, setRecipientEmail] = useState("");
 
   useEffect(() => {
     if (!user) {
@@ -33,7 +57,7 @@ const Dashboard = () => {
     }
 
     const loadProfile = async () => {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
@@ -47,7 +71,44 @@ const Dashboard = () => {
       setLoading(false);
     };
 
+    const loadWallet = async () => {
+      let { data: walletData, error } = await supabase
+        .from('wallets')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (error && error.code === 'PGRST116') {
+        const { data: newWallet } = await supabase
+          .from('wallets')
+          .insert({
+            user_id: user.id,
+            balance_usd: 0,
+            balance_brl: 0,
+            balance_aoa: 0,
+          })
+          .select()
+          .single();
+        walletData = newWallet;
+      }
+
+      setWallet(walletData);
+    };
+
+    const loadTransactions = async () => {
+      const { data } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      setTransactions(data || []);
+    };
+
     loadProfile();
+    loadWallet();
+    loadTransactions();
   }, [user, navigate]);
 
   const handleLogout = async () => {
@@ -108,8 +169,129 @@ const Dashboard = () => {
     }
   };
 
+  const handleDeposit = async () => {
+    if (!depositAmount || !user) return;
+
+    try {
+      const { data, error } = await supabase.functions.invoke('paypal-payment', {
+        body: {
+          action: 'deposit',
+          amount: parseFloat(depositAmount),
+          currency: selectedCurrency,
+        },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Depósito iniciado",
+        description: "Você será redirecionado para o PayPal para concluir o pagamento.",
+      });
+
+      setDepositAmount("");
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleWithdrawal = async () => {
+    if (!withdrawAmount || !user) return;
+
+    try {
+      const { data, error } = await supabase.functions.invoke('paypal-payment', {
+        body: {
+          action: 'withdrawal',
+          amount: parseFloat(withdrawAmount),
+          currency: selectedCurrency,
+          recipient_email: 'isaacmuaco582@gmail.com',
+        },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Levantamento processado",
+        description: "O valor será enviado para sua conta PayPal em breve.",
+      });
+
+      setWithdrawAmount("");
+      
+      // Reload wallet
+      const { data: walletData } = await supabase
+        .from('wallets')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+      setWallet(walletData);
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleTransfer = async () => {
+    if (!transferAmount || !recipientEmail || !user) return;
+
+    try {
+      const { data, error } = await supabase.functions.invoke('paypal-payment', {
+        body: {
+          action: 'transfer',
+          amount: parseFloat(transferAmount),
+          currency: selectedCurrency,
+          recipient_email: recipientEmail,
+        },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Transferência realizada",
+        description: `Valor enviado para ${recipientEmail}`,
+      });
+
+      setTransferAmount("");
+      setRecipientEmail("");
+
+      // Reload wallet
+      const { data: walletData } = await supabase
+        .from('wallets')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+      setWallet(walletData);
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const getBalance = () => {
+    if (!wallet) return "0,00";
+    const balanceKey = `balance_${selectedCurrency.toLowerCase()}`;
+    return (wallet[balanceKey] || 0).toFixed(2);
+  };
+
+  const formatCurrency = (amount: number, currency: string) => {
+    const symbols: Record<string, string> = {
+      USD: "$",
+      BRL: "R$",
+      AOA: "Kz",
+    };
+    return `${symbols[currency]} ${amount.toFixed(2)}`;
+  };
+
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
+    return <div className="min-h-screen flex items-center justify-center bg-background">Carregando...</div>;
   }
 
   return (
@@ -117,7 +299,7 @@ const Dashboard = () => {
       <Header onMenuClick={() => setSidebarOpen(true)} />
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      <div className="pt-20 pb-12 px-4">
+      <div className="pt-20 pb-32 px-4">
         <div className="container mx-auto max-w-5xl">
           <div className="flex items-center justify-between mb-8">
             <h1 className="font-serif text-4xl font-bold">Dashboard</h1>
@@ -127,15 +309,9 @@ const Dashboard = () => {
             </Button>
           </div>
 
-        <Tabs defaultValue="profile" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="profile">Perfil</TabsTrigger>
-            <TabsTrigger value="settings">Definições</TabsTrigger>
-            <TabsTrigger value="bank">Banco</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="profile" className="space-y-6">
-            <Card>
+          {/* Profile Tab */}
+          {activeTab === "profile" && (
+            <Card className="animate-in fade-in-50 duration-500">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <UserIcon className="h-5 w-5" />
@@ -147,17 +323,17 @@ const Dashboard = () => {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="flex items-center gap-6">
-                  <Avatar className="h-24 w-24">
+                  <Avatar className="h-32 w-32 border-4 border-primary">
                     <AvatarImage src={profileImage} />
-                    <AvatarFallback className="text-2xl">
+                    <AvatarFallback className="text-3xl bg-gradient-to-br from-primary to-accent text-background">
                       {fullName?.substring(0, 2).toUpperCase() || 'EV'}
                     </AvatarFallback>
                   </Avatar>
-                  <div>
+                  <div className="space-y-3">
                     <Label htmlFor="avatar-upload" className="cursor-pointer">
-                      <div className="flex items-center gap-2 px-4 py-2 bg-secondary hover:bg-secondary/80 rounded-md transition-smooth">
-                        <Camera className="h-4 w-4" />
-                        Trocar Foto
+                      <div className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary to-accent hover:opacity-90 rounded-lg transition-smooth text-background">
+                        <Camera className="h-5 w-5" />
+                        <span className="font-medium">Trocar Foto</span>
                       </div>
                       <Input
                         id="avatar-upload"
@@ -167,7 +343,7 @@ const Dashboard = () => {
                         onChange={handleImageUpload}
                       />
                     </Label>
-                    <p className="text-xs text-muted-foreground mt-2">
+                    <p className="text-xs text-muted-foreground">
                       Formato avatar recomendado (quadrado)
                     </p>
                   </div>
@@ -177,21 +353,23 @@ const Dashboard = () => {
 
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label>Nome Completo</Label>
+                    <Label className="text-base font-medium">Nome Completo</Label>
                     <Input
                       placeholder="Seu nome"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
+                      className="h-12 text-lg"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Nome de Usuário</Label>
+                    <Label className="text-base font-medium">Nome de Usuário</Label>
                     <div className="flex items-center gap-2">
-                      <span className="text-muted-foreground">@</span>
+                      <span className="text-muted-foreground text-lg">@</span>
                       <Input
                         placeholder="seu_username"
                         value={username}
                         onChange={(e) => setUsername(e.target.value.toLowerCase())}
+                        className="h-12 text-lg"
                       />
                     </div>
                     <p className="text-xs text-muted-foreground">
@@ -199,17 +377,20 @@ const Dashboard = () => {
                     </p>
                   </div>
                   <div className="space-y-2">
-                    <Label>Email</Label>
-                    <Input type="email" value={user?.email || ''} disabled />
+                    <Label className="text-base font-medium">Email</Label>
+                    <Input type="email" value={user?.email || ''} disabled className="h-12 text-lg" />
                   </div>
-                  <Button onClick={handleProfileUpdate}>Salvar Alterações</Button>
+                  <Button onClick={handleProfileUpdate} className="w-full h-12 text-lg">
+                    Salvar Alterações
+                  </Button>
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
+          )}
 
-          <TabsContent value="settings" className="space-y-6">
-            <Card>
+          {/* Settings Tab */}
+          {activeTab === "settings" && (
+            <Card className="animate-in fade-in-50 duration-500">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Settings className="h-5 w-5" />
@@ -222,28 +403,30 @@ const Dashboard = () => {
               <CardContent className="space-y-6">
                 <form onSubmit={handlePasswordChange} className="space-y-4">
                   <div className="space-y-2">
-                    <Label>Senha Atual</Label>
-                    <Input type="password" placeholder="••••••••" />
+                    <Label className="text-base font-medium">Senha Atual</Label>
+                    <Input type="password" placeholder="••••••••" className="h-12 text-lg" />
                   </div>
                   <div className="space-y-2">
-                    <Label>Nova Senha</Label>
-                    <Input type="password" placeholder="••••••••" />
+                    <Label className="text-base font-medium">Nova Senha</Label>
+                    <Input type="password" placeholder="••••••••" className="h-12 text-lg" />
                   </div>
                   <div className="space-y-2">
-                    <Label>Confirmar Nova Senha</Label>
-                    <Input type="password" placeholder="••••••••" />
+                    <Label className="text-base font-medium">Confirmar Nova Senha</Label>
+                    <Input type="password" placeholder="••••••••" className="h-12 text-lg" />
                   </div>
-                  <Button type="submit">Alterar Senha</Button>
+                  <Button type="submit" className="w-full h-12 text-lg">
+                    Alterar Senha
+                  </Button>
                 </form>
 
                 <Separator />
 
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Shield className="h-5 w-5 text-accent" />
+                  <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <Shield className="h-6 w-6 text-accent" />
                       <div>
-                        <p className="font-medium">Autenticação de Dois Fatores</p>
+                        <p className="font-medium text-lg">Autenticação de Dois Fatores</p>
                         <p className="text-sm text-muted-foreground">
                           Senha de 4 dígitos para proteção adicional
                         </p>
@@ -256,69 +439,249 @@ const Dashboard = () => {
                   </div>
 
                   {twoFactorEnabled && (
-                    <div className="space-y-2 pl-7">
-                      <Label>Código de 4 Dígitos</Label>
-                      <Input
-                        type="text"
-                        maxLength={4}
-                        placeholder="0000"
-                        className="w-32"
-                      />
-                      <Button size="sm">Configurar</Button>
+                    <div className="space-y-2 pl-7 animate-in slide-in-from-top duration-300">
+                      <Label className="text-base font-medium">Código de 4 Dígitos</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          type="text"
+                          maxLength={4}
+                          placeholder="0000"
+                          className="w-32 h-12 text-lg text-center"
+                        />
+                        <Button size="lg">Configurar</Button>
+                      </div>
                     </div>
                   )}
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
+          )}
 
-          <TabsContent value="bank" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <CreditCard className="h-5 w-5" />
-                  Carteira PayPal
-                </CardTitle>
-                <CardDescription>
-                  Gerencie saques, depósitos e levantamentos
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="bg-secondary p-6 rounded-lg">
-                  <p className="text-sm text-muted-foreground mb-2">Saldo Disponível</p>
-                  <p className="text-3xl font-bold">R$ 0,00</p>
-                </div>
+          {/* Bank Tab */}
+          {activeTab === "bank" && (
+            <div className="space-y-6 animate-in fade-in-50 duration-500">
+              {/* Balance Card */}
+              <Card className="bg-gradient-to-br from-primary via-primary/80 to-accent">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <p className="text-sm text-background/80 mb-1">Saldo Disponível</p>
+                      <p className="text-4xl font-bold text-background">
+                        {formatCurrency(parseFloat(getBalance()), selectedCurrency)}
+                      </p>
+                    </div>
+                    <Wallet className="h-12 w-12 text-background/80" />
+                  </div>
+                  <Select value={selectedCurrency} onValueChange={(val: any) => setSelectedCurrency(val)}>
+                    <SelectTrigger className="w-40 bg-background/20 border-background/30 text-background">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="BRL">R$ (BRL)</SelectItem>
+                      <SelectItem value="USD">$ (USD)</SelectItem>
+                      <SelectItem value="AOA">Kz (AOA)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </CardContent>
+              </Card>
 
-                <Separator />
+              {/* Actions Grid */}
+              <div className="grid md:grid-cols-3 gap-4">
+                {/* Deposit */}
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Card className="cursor-pointer hover:shadow-lg transition-smooth">
+                      <CardContent className="p-6 text-center">
+                        <ArrowDownCircle className="h-12 w-12 mx-auto mb-3 text-green-600" />
+                        <h3 className="font-semibold text-lg">Depositar</h3>
+                        <p className="text-sm text-muted-foreground">Adicionar fundos</p>
+                      </CardContent>
+                    </Card>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Depositar via PayPal</DialogTitle>
+                      <DialogDescription>
+                        Adicione fundos à sua carteira EVS
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 pt-4">
+                      <div className="space-y-2">
+                        <Label>Valor</Label>
+                        <Input
+                          type="number"
+                          placeholder="0.00"
+                          value={depositAmount}
+                          onChange={(e) => setDepositAmount(e.target.value)}
+                          className="h-12 text-lg"
+                        />
+                      </div>
+                      <Button onClick={handleDeposit} className="w-full h-12 bg-[#0070BA] hover:bg-[#005EA6]">
+                        <DollarSign className="mr-2" />
+                        Continuar para PayPal
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
 
-                <div className="grid gap-4">
-                  <Button variant="outline" className="w-full justify-start gap-2">
-                    <CreditCard className="h-4 w-4" />
-                    Depositar via PayPal
-                  </Button>
-                  <Button variant="outline" className="w-full justify-start gap-2">
-                    <CreditCard className="h-4 w-4" />
-                    Sacar para PayPal
-                  </Button>
-                  <Button variant="outline" className="w-full justify-start gap-2">
-                    <CreditCard className="h-4 w-4" />
-                    Histórico de Transações
-                  </Button>
-                </div>
+                {/* Withdrawal */}
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Card className="cursor-pointer hover:shadow-lg transition-smooth">
+                      <CardContent className="p-6 text-center">
+                        <ArrowUpCircle className="h-12 w-12 mx-auto mb-3 text-red-600" />
+                        <h3 className="font-semibold text-lg">Levantar</h3>
+                        <p className="text-sm text-muted-foreground">Sacar fundos</p>
+                      </CardContent>
+                    </Card>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Levantamento para PayPal</DialogTitle>
+                      <DialogDescription>
+                        Transfira fundos para sua conta PayPal
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 pt-4">
+                      <div className="space-y-2">
+                        <Label>Valor</Label>
+                        <Input
+                          type="number"
+                          placeholder="0.00"
+                          value={withdrawAmount}
+                          onChange={(e) => setWithdrawAmount(e.target.value)}
+                          className="h-12 text-lg"
+                        />
+                      </div>
+                      <Button onClick={handleWithdrawal} className="w-full h-12">
+                        Confirmar Levantamento
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
 
-                <div className="bg-muted p-4 rounded-lg">
-                  <p className="text-sm font-medium mb-2">Conectar PayPal</p>
-                  <p className="text-xs text-muted-foreground mb-4">
-                    Vincule sua conta PayPal para realizar transações
-                  </p>
-                  <Button size="sm" className="bg-[#0070BA] hover:bg-[#005EA6]">
-                    Conectar com PayPal
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+                {/* Transfer */}
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Card className="cursor-pointer hover:shadow-lg transition-smooth">
+                      <CardContent className="p-6 text-center">
+                        <Send className="h-12 w-12 mx-auto mb-3 text-blue-600" />
+                        <h3 className="font-semibold text-lg">Transferir</h3>
+                        <p className="text-sm text-muted-foreground">Enviar para outro</p>
+                      </CardContent>
+                    </Card>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Transferência Bancária</DialogTitle>
+                      <DialogDescription>
+                        Envie fundos para outra conta
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 pt-4">
+                      <div className="space-y-2">
+                        <Label>Email do Destinatário</Label>
+                        <Input
+                          type="email"
+                          placeholder="email@exemplo.com"
+                          value={recipientEmail}
+                          onChange={(e) => setRecipientEmail(e.target.value)}
+                          className="h-12 text-lg"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Valor</Label>
+                        <Input
+                          type="number"
+                          placeholder="0.00"
+                          value={transferAmount}
+                          onChange={(e) => setTransferAmount(e.target.value)}
+                          className="h-12 text-lg"
+                        />
+                      </div>
+                      <Button onClick={handleTransfer} className="w-full h-12">
+                        Confirmar Transferência
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+
+              {/* Transactions History */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <History className="h-5 w-5" />
+                    Movimentos da Conta
+                  </CardTitle>
+                  <CardDescription>Histórico de transações recentes</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {transactions.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">
+                      Nenhuma transação ainda
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {transactions.map((transaction) => (
+                        <div
+                          key={transaction.id}
+                          className="flex items-center justify-between p-4 bg-muted rounded-lg"
+                        >
+                          <div className="flex items-center gap-3">
+                            {transaction.type === 'deposit' && <ArrowDownCircle className="h-5 w-5 text-green-600" />}
+                            {transaction.type === 'withdrawal' && <ArrowUpCircle className="h-5 w-5 text-red-600" />}
+                            {transaction.type === 'transfer' && <Send className="h-5 w-5 text-blue-600" />}
+                            <div>
+                              <p className="font-medium">{transaction.description}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {new Date(transaction.created_at).toLocaleString('pt-BR')}
+                              </p>
+                            </div>
+                          </div>
+                          <p className="font-bold">
+                            {formatCurrency(transaction.amount, transaction.currency)}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Footer Navigation */}
+      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border">
+        <div className="container mx-auto max-w-5xl">
+          <div className="grid grid-cols-3 gap-2 p-2">
+            <Button
+              variant={activeTab === "profile" ? "default" : "ghost"}
+              onClick={() => setActiveTab("profile")}
+              className="flex flex-col h-16 gap-1"
+            >
+              <UserIcon className="h-5 w-5" />
+              <span className="text-xs">Perfil</span>
+            </Button>
+            <Button
+              variant={activeTab === "settings" ? "default" : "ghost"}
+              onClick={() => setActiveTab("settings")}
+              className="flex flex-col h-16 gap-1"
+            >
+              <Settings className="h-5 w-5" />
+              <span className="text-xs">Definições</span>
+            </Button>
+            <Button
+              variant={activeTab === "bank" ? "default" : "ghost"}
+              onClick={() => setActiveTab("bank")}
+              className="flex flex-col h-16 gap-1"
+            >
+              <Wallet className="h-5 w-5" />
+              <span className="text-xs">Banco</span>
+            </Button>
+          </div>
         </div>
       </div>
     </div>
