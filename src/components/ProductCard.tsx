@@ -4,6 +4,7 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 
 interface ProductCardProps {
   id: string;
@@ -24,6 +25,7 @@ export const ProductCard = ({
   category,
   onAddToCart,
 }: ProductCardProps) => {
+  const navigate = useNavigate();
   const [isLiked, setIsLiked] = useState(false);
   const [rating, setRating] = useState<number>(0);
   const [reviewCount, setReviewCount] = useState<number>(0);
@@ -51,8 +53,11 @@ export const ProductCard = ({
   };
 
   return (
-    <Card className="group overflow-hidden border-border hover:shadow-medium transition-all duration-300">
-      <div className="relative overflow-hidden aspect-[3/4] bg-secondary">
+    <Card className="group overflow-hidden border-border hover:shadow-medium transition-all duration-300 cursor-pointer animate-fade-in">
+      <div 
+        className="relative overflow-hidden aspect-[3/4] bg-secondary"
+        onClick={() => navigate(`/product/${id}`)}
+      >
         <img
           src={image}
           alt={name}
@@ -75,7 +80,7 @@ export const ProductCard = ({
         </Button>
       </div>
 
-      <CardContent className="p-4">
+      <CardContent className="p-4" onClick={() => navigate(`/product/${id}`)}>
         <h3 className="font-semibold text-lg mb-2 line-clamp-2">{name}</h3>
         
         {reviewCount > 0 && (
