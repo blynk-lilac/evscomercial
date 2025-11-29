@@ -88,7 +88,7 @@ const Index = () => {
       {/* Products Section */}
       <section className="py-12 px-4">
         <div className="container mx-auto">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8 animate-fade-in">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 animate-fade-in">
             <h2 className="font-serif text-3xl font-bold">Catálogo</h2>
             <Tabs value={regionFilter} onValueChange={(v) => setRegionFilter(v as any)}>
               <TabsList className="transition-smooth">
@@ -98,6 +98,10 @@ const Index = () => {
               </TabsList>
             </Tabs>
           </div>
+          
+          <p className="text-muted-foreground mb-8 text-center sm:text-left animate-fade-in">
+            💡 Clique em qualquer produto para ver detalhes completos, ler avaliações e deixar sua opinião!
+          </p>
 
           {loading ? (
             <div className="text-center py-12">Carregando produtos...</div>
