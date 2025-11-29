@@ -142,6 +142,54 @@ const Cart = () => {
 
   const discount = (subtotal * appliedDiscount) / 100;
   const total = subtotal - discount;
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const handleCheckout = async () => {
+    setIsProcessing(true);
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast({
+          title: "Erro",
+          description: "Você precisa estar logado para finalizar a compra.",
+          variant: "destructive",
+        });
+        setIsProcessing(false);
+        return;
+      }
+
+      // Call PayPal edge function to create checkout order
+      const { data, error } = await supabase.functions.invoke('paypal-payment', {
+        body: {
+          action: 'checkout',
+          amount: total,
+          currency: 'BRL'
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      // Redirect to PayPal approval URL
+      const approvalUrl = data.data.links.find((link: any) => link.rel === 'approve')?.href;
+      if (approvalUrl) {
+        window.location.href = approvalUrl;
+      } else {
+        throw new Error('URL de aprovação PayPal não encontrada');
+      }
+      
+    } catch (error) {
+      console.error('Erro ao processar pagamento:', error);
+      toast({
+        title: "Erro no pagamento",
+        description: "Não foi possível processar o pagamento. Tente novamente.",
+        variant: "destructive",
+      });
+      setIsProcessing(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -285,8 +333,10 @@ const Cart = () => {
                     <Button 
                       className="w-full bg-accent hover:bg-accent/90 transition-smooth" 
                       size="lg"
+                      onClick={handleCheckout}
+                      disabled={isProcessing}
                     >
-                      Finalizar com PayPal
+                      {isProcessing ? 'Processando...' : 'Finalizar com PayPal'}
                     </Button>
                   </CardFooter>
                 </Card>
