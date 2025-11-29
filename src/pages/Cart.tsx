@@ -9,6 +9,7 @@ import { Link } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Sidebar } from "@/components/Sidebar";
 import { useCart } from "@/contexts/CartContext";
+import { supabase } from "@/integrations/supabase/client";
 
 const Cart = () => {
   const { toast } = useToast();
@@ -17,12 +18,73 @@ const Cart = () => {
   const [discountCode, setDiscountCode] = useState("");
   const [appliedDiscount, setAppliedDiscount] = useState(0);
 
-  const applyDiscount = () => {
-    if (discountCode.length > 0) {
-      setAppliedDiscount(10);
+  const applyDiscount = async () => {
+    if (!discountCode.trim()) {
+      toast({
+        title: "Erro",
+        description: "Digite um código de cupom válido.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Validate coupon from database
+      const { data: coupon, error } = await supabase
+        .from('coupons')
+        .select('*')
+        .eq('code', discountCode)
+        .eq('is_active', true)
+        .single();
+
+      if (error || !coupon) {
+        toast({
+          title: "Cupom inválido",
+          description: "Este cupom não existe ou já foi usado.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Check if coupon is expired
+      if (coupon.expires_at && new Date(coupon.expires_at) < new Date()) {
+        toast({
+          title: "Cupom expirado",
+          description: "Este cupom já expirou.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Check if coupon reached usage limit
+      if (coupon.usage_limit && coupon.usage_count >= coupon.usage_limit) {
+        toast({
+          title: "Cupom já utilizado",
+          description: "Este cupom já atingiu o limite de uso.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Apply discount
+      setAppliedDiscount(coupon.discount_percentage);
+      
+      // Update usage count
+      await supabase
+        .from('coupons')
+        .update({ usage_count: (coupon.usage_count || 0) + 1 })
+        .eq('id', coupon.id);
+
       toast({
         title: "Cupom aplicado!",
-        description: "Você ganhou 10% de desconto.",
+        description: `Você ganhou ${coupon.discount_percentage}% de desconto.`,
+      });
+    } catch (error) {
+      console.error('Erro ao aplicar cupom:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao validar cupom. Tente novamente.",
+        variant: "destructive",
       });
     }
   };

@@ -1,1 +1,7 @@
 project_id = "tnwuwwipigcenohbhfup"
+
+[functions.evs-chat]
+verify_jwt = false
+
+[functions.generate-coupon]
+verify_jwt = false
