@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getProductImage } from "@/lib/imageMap";
 import { Star, ShoppingCart, Heart, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useCart } from "@/contexts/CartContext";
 
 interface Product {
   id: string;
@@ -38,6 +39,7 @@ const ProductDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { addItem } = useCart();
   const { toast } = useToast();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [product, setProduct] = useState<Product | null>(null);
@@ -155,9 +157,14 @@ const ProductDetail = () => {
   };
 
   const handleAddToCart = () => {
-    toast({
-      title: "Produto adicionado!",
-      description: "O item foi adicionado ao seu carrinho.",
+    if (!product) return;
+    
+    addItem({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      currency: product.currency,
+      image: getProductImage(product.image_url),
     });
   };
 
@@ -175,7 +182,7 @@ const ProductDetail = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header onMenuClick={() => setSidebarOpen(true)} cartItemCount={0} />
+      <Header onMenuClick={() => setSidebarOpen(true)} />
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="container mx-auto px-4 pt-24 pb-12">

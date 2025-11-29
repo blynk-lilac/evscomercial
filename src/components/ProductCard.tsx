@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { useCart } from "@/contexts/CartContext";
 
 interface ProductCardProps {
   id: string;
@@ -13,7 +14,6 @@ interface ProductCardProps {
   currency: string;
   image: string;
   category?: string;
-  onAddToCart?: (id: string) => void;
 }
 
 export const ProductCard = ({
@@ -23,9 +23,9 @@ export const ProductCard = ({
   currency,
   image,
   category,
-  onAddToCart,
 }: ProductCardProps) => {
   const navigate = useNavigate();
+  const { addItem } = useCart();
   const [isLiked, setIsLiked] = useState(false);
   const [rating, setRating] = useState<number>(0);
   const [reviewCount, setReviewCount] = useState<number>(0);
@@ -49,7 +49,13 @@ export const ProductCard = ({
   };
 
   const handleAddToCart = () => {
-    onAddToCart?.(id);
+    addItem({
+      id,
+      name,
+      price,
+      currency,
+      image,
+    });
   };
 
   return (

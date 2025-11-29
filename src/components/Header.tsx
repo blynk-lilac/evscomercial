@@ -3,14 +3,16 @@ import { Menu, ShoppingCart, User } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useCart } from "@/contexts/CartContext";
 import evsLogo from "@/assets/evs-logo.png";
 
 interface HeaderProps {
   onMenuClick: () => void;
-  cartItemCount?: number;
 }
 
-export const Header = ({ onMenuClick, cartItemCount = 0 }: HeaderProps) => {
+export const Header = ({ onMenuClick }: HeaderProps) => {
+  const { totalItems } = useCart();
+  
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border shadow-soft animate-fade-in">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
@@ -35,9 +37,9 @@ export const Header = ({ onMenuClick, cartItemCount = 0 }: HeaderProps) => {
           <Link to="/cart">
             <Button variant="ghost" size="icon" className="relative hover:bg-secondary hover:scale-110 transition-all duration-200">
               <ShoppingCart className="h-5 w-5" />
-              {cartItemCount > 0 && (
+              {totalItems > 0 && (
                 <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-accent text-accent-foreground animate-scale-in">
-                  {cartItemCount}
+                  {totalItems}
                 </Badge>
               )}
             </Button>
