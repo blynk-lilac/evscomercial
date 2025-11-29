@@ -64,7 +64,7 @@ const Auth = () => {
 
   const handleSignupComplete = async (data: SignUpData) => {
     setLoading(true);
-    const { error } = await signUp(data.email, data.password, data.fullName, data.username);
+    const { error } = await signUp(data.email, data.password, data.fullName);
     setLoading(false);
 
     if (error) {
@@ -72,12 +72,6 @@ const Auth = () => {
         toast({
           title: "Erro no cadastro",
           description: "Este e-mail já está cadastrado. Tente fazer login.",
-          variant: "destructive",
-        });
-      } else if (error.message.includes("duplicate key value violates unique constraint")) {
-        toast({
-          title: "Erro no cadastro",
-          description: "Este nome de usuário já está em uso. Escolha outro.",
           variant: "destructive",
         });
       } else {
@@ -88,8 +82,12 @@ const Auth = () => {
         });
       }
     } else {
-      // Redirecionar para página de confirmação de e-mail
-      navigate("/email-confirmation");
+      toast({
+        title: "Conta criada!",
+        description: "Você já pode fazer login.",
+      });
+      // Redirect to login tab
+      window.location.href = "/auth?mode=login";
     }
   };
 
