@@ -159,6 +159,8 @@ const Cart = () => {
         return;
       }
 
+      console.log('Iniciando checkout com PayPal...', { total, currency: 'BRL' });
+
       // Call PayPal edge function to create checkout order
       const { data, error } = await supabase.functions.invoke('paypal-payment', {
         body: {
@@ -168,23 +170,32 @@ const Cart = () => {
         }
       });
 
+      console.log('Resposta do PayPal:', { data, error });
+
       if (error) {
+        console.error('Erro no edge function:', error);
         throw error;
       }
 
+      if (!data || !data.data) {
+        throw new Error('Resposta inválida do PayPal');
+      }
+
       // Redirect to PayPal approval URL
-      const approvalUrl = data.data.links.find((link: any) => link.rel === 'approve')?.href;
+      const approvalUrl = data.data.links?.find((link: any) => link.rel === 'approve')?.href;
+      console.log('URL de aprovação:', approvalUrl);
+      
       if (approvalUrl) {
         window.location.href = approvalUrl;
       } else {
         throw new Error('URL de aprovação PayPal não encontrada');
       }
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao processar pagamento:', error);
       toast({
         title: "Erro no pagamento",
-        description: "Não foi possível processar o pagamento. Tente novamente.",
+        description: error.message || "Não foi possível processar o pagamento. Tente novamente.",
         variant: "destructive",
       });
       setIsProcessing(false);
