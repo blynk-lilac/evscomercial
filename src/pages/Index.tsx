@@ -67,20 +67,20 @@ const Index = () => {
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       {/* Hero Section */}
-      <section className="pt-24 pb-12 px-4 bg-gradient-to-b from-secondary/30 to-background">
+      <section className="pt-24 pb-12 px-4 bg-gradient-to-b from-secondary/30 to-background animate-fade-in">
         <div className="container mx-auto text-center max-w-4xl">
-          <h1 className="font-serif text-5xl md:text-7xl font-bold mb-4 tracking-tight">
+          <h1 className="font-serif text-5xl md:text-7xl font-bold mb-4 tracking-tight animate-scale-in">
             EVS Fashion
           </h1>
-          <p className="text-xl md:text-2xl text-muted-foreground mb-2">
+          <p className="text-xl md:text-2xl text-muted-foreground mb-2 animate-fade-in" style={{ animationDelay: '0.1s' }}>
             Mais Que Moda, É Identidade.
           </p>
-          <p className="text-lg text-muted-foreground mb-8">
+          <p className="text-lg text-muted-foreground mb-8 animate-fade-in" style={{ animationDelay: '0.2s' }}>
             Melhor Tendência 2026 • Melhor Qualidade 2026
           </p>
-          <div className="flex items-center justify-center gap-4 text-sm text-muted-foreground">
-            <span className="px-4 py-2 bg-secondary rounded-full">CEO: Hélio Evaristo</span>
-            <span className="px-4 py-2 bg-secondary rounded-full">@evs_oficial</span>
+          <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-muted-foreground animate-fade-in" style={{ animationDelay: '0.3s' }}>
+            <span className="px-4 py-2 bg-secondary rounded-full hover:bg-secondary/80 transition-smooth">CEO: Hélio Evaristo</span>
+            <span className="px-4 py-2 bg-secondary rounded-full hover:bg-secondary/80 transition-smooth">@evs_oficial</span>
           </div>
         </div>
       </section>
@@ -88,13 +88,13 @@ const Index = () => {
       {/* Products Section */}
       <section className="py-12 px-4">
         <div className="container mx-auto">
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8 animate-fade-in">
             <h2 className="font-serif text-3xl font-bold">Catálogo</h2>
             <Tabs value={regionFilter} onValueChange={(v) => setRegionFilter(v as any)}>
-              <TabsList>
-                <TabsTrigger value="all">Todos</TabsTrigger>
-                <TabsTrigger value="Brasil">Brasil</TabsTrigger>
-                <TabsTrigger value="Angola">Angola</TabsTrigger>
+              <TabsList className="transition-smooth">
+                <TabsTrigger value="all" className="transition-smooth">Todos</TabsTrigger>
+                <TabsTrigger value="Brasil" className="transition-smooth">Brasil</TabsTrigger>
+                <TabsTrigger value="Angola" className="transition-smooth">Angola</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>

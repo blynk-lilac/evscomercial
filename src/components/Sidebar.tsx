@@ -14,37 +14,38 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
       {/* Overlay */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 transition-opacity"
+          className="fixed inset-0 bg-black/50 z-40 transition-opacity animate-fade-in"
           onClick={onClose}
         />
       )}
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 h-full w-80 bg-background border-r border-border z-50 transform transition-transform duration-300 ease-in-out ${
+        className={`fixed top-0 left-0 h-full w-80 max-w-[85vw] bg-background border-r border-border z-50 transform transition-all duration-300 ease-out ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         } shadow-strong`}
       >
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-border">
+          <div className="flex items-center justify-between p-4 border-b border-border animate-fade-in">
             <h2 className="font-serif text-xl font-bold">Menu</h2>
             <Button
               variant="ghost"
               size="icon"
               onClick={onClose}
-              className="hover:bg-secondary transition-smooth"
+              className="hover:bg-secondary hover:rotate-90 transition-all duration-200"
             >
               <X className="h-5 w-5" />
             </Button>
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 p-4 space-y-2">
+          <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
             <Link to="/" onClick={onClose}>
               <Button
                 variant="ghost"
-                className="w-full justify-start gap-3 hover:bg-secondary transition-smooth"
+                className="w-full justify-start gap-3 hover:bg-secondary hover:translate-x-1 transition-all duration-200 animate-fade-in"
+                style={{ animationDelay: '0.1s' }}
               >
                 <Home className="h-5 w-5" />
                 Página Inicial
@@ -56,7 +57,8 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
             <Link to="/auth?mode=login" onClick={onClose}>
               <Button
                 variant="ghost"
-                className="w-full justify-start gap-3 hover:bg-secondary transition-smooth"
+                className="w-full justify-start gap-3 hover:bg-secondary hover:translate-x-1 transition-all duration-200 animate-fade-in"
+                style={{ animationDelay: '0.2s' }}
               >
                 <LogIn className="h-5 w-5" />
                 Login
@@ -66,7 +68,8 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
             <Link to="/auth?mode=signup" onClick={onClose}>
               <Button
                 variant="ghost"
-                className="w-full justify-start gap-3 hover:bg-secondary transition-smooth"
+                className="w-full justify-start gap-3 hover:bg-secondary hover:translate-x-1 transition-all duration-200 animate-fade-in"
+                style={{ animationDelay: '0.3s' }}
               >
                 <UserPlus className="h-5 w-5" />
                 Cadastro
@@ -78,7 +81,8 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
             <Link to="/dashboard" onClick={onClose}>
               <Button
                 variant="ghost"
-                className="w-full justify-start gap-3 hover:bg-secondary transition-smooth"
+                className="w-full justify-start gap-3 hover:bg-secondary hover:translate-x-1 transition-all duration-200 animate-fade-in"
+                style={{ animationDelay: '0.4s' }}
               >
                 <LayoutDashboard className="h-5 w-5" />
                 Dashboard
@@ -88,7 +92,8 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
             <Link to="/admin" onClick={onClose}>
               <Button
                 variant="ghost"
-                className="w-full justify-start gap-3 hover:bg-secondary transition-smooth"
+                className="w-full justify-start gap-3 hover:bg-secondary hover:translate-x-1 transition-all duration-200 animate-fade-in"
+                style={{ animationDelay: '0.5s' }}
               >
                 <LayoutDashboard className="h-5 w-5" />
                 Admin
@@ -98,7 +103,7 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
 
           {/* Footer */}
           <div className="p-4 border-t border-border">
-            <p className="text-xs text-muted-foreground text-center">
+            <p className="text-xs text-muted-foreground text-center animate-fade-in">
               EVS - Mais Que Moda, É Identidade
             </p>
           </div>
