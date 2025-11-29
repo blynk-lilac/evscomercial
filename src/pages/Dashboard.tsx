@@ -12,6 +12,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { Header } from "@/components/Header";
+import { Sidebar } from "@/components/Sidebar";
 
 const Dashboard = () => {
   const { toast } = useToast();
@@ -21,6 +23,7 @@ const Dashboard = () => {
   const [profileImage, setProfileImage] = useState("");
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -104,15 +107,19 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen pt-20 pb-12 px-4">
-      <div className="container mx-auto max-w-5xl">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="font-serif text-4xl font-bold">Dashboard</h1>
-          <Button variant="outline" onClick={handleLogout} className="gap-2">
-            <LogOut className="h-4 w-4" />
-            Sair
-          </Button>
-        </div>
+    <div className="min-h-screen bg-background">
+      <Header onMenuClick={() => setSidebarOpen(true)} cartItemCount={0} />
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
+      <div className="pt-20 pb-12 px-4">
+        <div className="container mx-auto max-w-5xl">
+          <div className="flex items-center justify-between mb-8">
+            <h1 className="font-serif text-4xl font-bold">Dashboard</h1>
+            <Button variant="outline" onClick={handleLogout} className="gap-2">
+              <LogOut className="h-4 w-4" />
+              Sair
+            </Button>
+          </div>
 
         <Tabs defaultValue="profile" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
@@ -292,6 +299,7 @@ const Dashboard = () => {
             </Card>
           </TabsContent>
         </Tabs>
+        </div>
       </div>
     </div>
   );
