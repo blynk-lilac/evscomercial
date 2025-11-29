@@ -57,6 +57,14 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        evs: {
+          red: "hsl(var(--evs-red))",
+          gray: "hsl(var(--evs-gray))",
+        },
+      },
+      fontFamily: {
+        sans: ['Montserrat', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        serif: ['Playfair Display', 'ui-serif', 'Georgia', 'serif'],
       },
       borderRadius: {
         lg: "var(--radius)",
