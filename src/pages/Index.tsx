@@ -5,6 +5,7 @@ import { ProductCard } from "@/components/ProductCard";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
+import { getProductImage } from "@/lib/imageMap";
 
 interface Product {
   id: string;
@@ -109,7 +110,7 @@ const Index = () => {
                   name={product.name}
                   price={product.price}
                   currency={product.currency}
-                  image={product.image_url}
+                  image={getProductImage(product.image_url)}
                   category={product.category}
                   onAddToCart={handleAddToCart}
                 />
