@@ -145,6 +145,29 @@ serve(async (req) => {
         break;
 
       case 'withdrawal':
+        // Validate withdrawal amount (100-200)
+        if (amount < 100 || amount > 200) {
+          throw new Error('O valor de levantamento deve ser entre 100 e 200');
+        }
+
+        // Check user balance before withdrawal
+        const { data: userWallet } = await supabase
+          .from('wallets')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+
+        if (!userWallet) {
+          throw new Error('Carteira não encontrada');
+        }
+
+        const balanceKey = `balance_${currency.toLowerCase()}`;
+        const currentBalance = userWallet[balanceKey] || 0;
+
+        if (currentBalance < amount) {
+          throw new Error('Saldo insuficiente para levantamento');
+        }
+
         // Create PayPal payout for withdrawal
         const amountInUSD = convertCurrency(amount, currency, 'USD');
         
@@ -205,6 +228,24 @@ serve(async (req) => {
         break;
 
       case 'transfer':
+        // Check user balance before transfer
+        const { data: senderWallet } = await supabase
+          .from('wallets')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+
+        if (!senderWallet) {
+          throw new Error('Carteira não encontrada');
+        }
+
+        const senderBalanceKey = `balance_${currency.toLowerCase()}`;
+        const senderBalance = senderWallet[senderBalanceKey] || 0;
+
+        if (senderBalance < amount) {
+          throw new Error('Saldo insuficiente para transferência');
+        }
+
         // Bank transfer via PayPal
         const transferAmountUSD = convertCurrency(amount, currency, 'USD');
         
@@ -234,18 +275,18 @@ serve(async (req) => {
         result = await transferResponse.json();
 
         // Update wallet and create transaction
-        const { data: userWallet } = await supabase
+        const { data: transferWallet } = await supabase
           .from('wallets')
           .select('*')
           .eq('user_id', user.id)
           .single();
 
-        if (userWallet) {
-          const balanceKey = `balance_${currency.toLowerCase()}`;
+        if (transferWallet) {
+          const transferBalanceKey = `balance_${currency.toLowerCase()}`;
           await supabase
             .from('wallets')
             .update({
-              [balanceKey]: (userWallet[balanceKey] || 0) - amount,
+              [transferBalanceKey]: (transferWallet[transferBalanceKey] || 0) - amount,
             })
             .eq('user_id', user.id);
         }
