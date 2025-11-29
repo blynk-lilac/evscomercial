@@ -22,6 +22,7 @@ const Dashboard = () => {
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [profileImage, setProfileImage] = useState("");
   const [fullName, setFullName] = useState("");
+  const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -40,6 +41,7 @@ const Dashboard = () => {
 
       if (data) {
         setFullName(data.full_name || '');
+        setUsername(data.username || '');
         setProfileImage(data.avatar_url || '');
       }
       setLoading(false);
@@ -66,7 +68,11 @@ const Dashboard = () => {
 
     const { error } = await supabase
       .from('profiles')
-      .update({ full_name: fullName, avatar_url: profileImage })
+      .update({ 
+        full_name: fullName, 
+        username: username,
+        avatar_url: profileImage 
+      })
       .eq('id', user.id);
 
     if (error) {
@@ -177,6 +183,20 @@ const Dashboard = () => {
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Nome de Usuário</Label>
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground">@</span>
+                      <Input
+                        placeholder="seu_username"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value.toLowerCase())}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Use apenas letras, números e _
+                    </p>
                   </div>
                   <div className="space-y-2">
                     <Label>Email</Label>

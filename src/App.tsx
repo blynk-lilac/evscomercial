@@ -10,6 +10,7 @@ import Dashboard from "./pages/Dashboard";
 import Cart from "./pages/Cart";
 import Admin from "./pages/Admin";
 import ProductDetail from "./pages/ProductDetail";
+import EmailConfirmation from "./pages/EmailConfirmation";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="/cart" element={<Cart />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/product/:id" element={<ProductDetail />} />
+            <Route path="/email-confirmation" element={<EmailConfirmation />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
