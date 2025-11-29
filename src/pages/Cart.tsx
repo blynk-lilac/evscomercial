@@ -28,6 +28,17 @@ const Cart = () => {
       return;
     }
 
+    // Get current user
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      toast({
+        title: "Erro",
+        description: "Você precisa estar logado para usar cupons.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       // Validate coupon from database
       const { data: coupon, error } = await supabase
@@ -66,18 +77,58 @@ const Cart = () => {
         return;
       }
 
+      // Check if coupon was already used on any product in cart
+      const productIds = items.map(item => item.id);
+      const { data: usedOnProducts, error: usageError } = await supabase
+        .from('coupon_usage')
+        .select('product_id')
+        .eq('coupon_id', coupon.id)
+        .in('product_id', productIds);
+
+      if (usageError) {
+        console.error('Error checking coupon usage:', usageError);
+      }
+
+      if (usedOnProducts && usedOnProducts.length > 0) {
+        const usedProductNames = items
+          .filter(item => usedOnProducts.some(u => u.product_id === item.id))
+          .map(item => item.name)
+          .join(', ');
+        
+        toast({
+          title: "Cupom já utilizado",
+          description: `Este cupom já foi usado em: ${usedProductNames}`,
+          variant: "destructive",
+        });
+        return;
+      }
+
       // Apply discount
       setAppliedDiscount(coupon.discount_percentage);
       
-      // Update usage count
+      // Record coupon usage for each product in cart
+      const couponUsageRecords = items.map(item => ({
+        coupon_id: coupon.id,
+        user_id: session.user.id,
+        product_id: item.id
+      }));
+
+      await supabase
+        .from('coupon_usage')
+        .insert(couponUsageRecords);
+      
+      // Update usage count and deactivate coupon
       await supabase
         .from('coupons')
-        .update({ usage_count: (coupon.usage_count || 0) + 1 })
+        .update({ 
+          usage_count: (coupon.usage_count || 0) + 1,
+          is_active: false // Desativar após uso
+        })
         .eq('id', coupon.id);
 
       toast({
         title: "Cupom aplicado!",
-        description: `Você ganhou ${coupon.discount_percentage}% de desconto.`,
+        description: `Você ganhou ${coupon.discount_percentage}% de desconto. O cupom foi utilizado e expirou.`,
       });
     } catch (error) {
       console.error('Erro ao aplicar cupom:', error);

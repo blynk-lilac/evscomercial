@@ -42,6 +42,32 @@ serve(async (req) => {
       )
     }
 
+    // Check recent discount requests (within last 24 hours)
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+    const { data: recentRequests, error: requestError } = await supabase
+      .from('discount_requests')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('was_granted', true)
+      .gte('requested_at', oneDayAgo)
+
+    if (requestError) {
+      console.error('Error checking recent requests:', requestError)
+    }
+
+    if (recentRequests && recentRequests.length > 0) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Você já solicitou um cupom recentemente. Aguarde 24 horas para solicitar outro.',
+          waitTime: '24 horas'
+        }),
+        { 
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+
     // Check if user already has an active coupon
     const { data: existingCoupons, error: checkError } = await supabase
       .from('coupons')
@@ -92,12 +118,20 @@ serve(async (req) => {
       )
     }
 
+    // Log discount request
+    await supabase
+      .from('discount_requests')
+      .insert({
+        user_id: user.id,
+        was_granted: true
+      })
+
     return new Response(
       JSON.stringify({ 
         success: true,
         coupon: newCoupon.code,
         discount: 6,
-        message: 'Cupom gerado com sucesso! Válido por 30 dias e apenas uma vez.'
+        message: 'Cupom gerado com sucesso! Válido por 30 dias e apenas uma vez por produto.'
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 

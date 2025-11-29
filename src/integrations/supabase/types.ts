@@ -14,6 +14,55 @@ export type Database = {
   }
   public: {
     Tables: {
+      coupon_usage: {
+        Row: {
+          coupon_id: string
+          id: string
+          order_id: string | null
+          product_id: string
+          used_at: string
+          user_id: string
+        }
+        Insert: {
+          coupon_id: string
+          id?: string
+          order_id?: string | null
+          product_id: string
+          used_at?: string
+          user_id: string
+        }
+        Update: {
+          coupon_id?: string
+          id?: string
+          order_id?: string | null
+          product_id?: string
+          used_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coupon_usage_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coupon_usage_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coupon_usage_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       coupons: {
         Row: {
           code: string
@@ -47,6 +96,30 @@ export type Database = {
           is_active?: boolean | null
           usage_count?: number | null
           usage_limit?: number | null
+        }
+        Relationships: []
+      }
+      discount_requests: {
+        Row: {
+          id: string
+          product_id: string | null
+          requested_at: string
+          user_id: string
+          was_granted: boolean | null
+        }
+        Insert: {
+          id?: string
+          product_id?: string | null
+          requested_at?: string
+          user_id: string
+          was_granted?: boolean | null
+        }
+        Update: {
+          id?: string
+          product_id?: string | null
+          requested_at?: string
+          user_id?: string
+          was_granted?: boolean | null
         }
         Relationships: []
       }
