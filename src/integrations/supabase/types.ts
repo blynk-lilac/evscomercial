@@ -331,6 +331,48 @@ export type Database = {
           },
         ]
       }
+      transactions: {
+        Row: {
+          amount: number
+          created_at: string | null
+          currency: string
+          description: string | null
+          id: string
+          paypal_transaction_id: string | null
+          recipient_email: string | null
+          status: string
+          type: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          currency: string
+          description?: string | null
+          id?: string
+          paypal_transaction_id?: string | null
+          recipient_email?: string | null
+          status?: string
+          type: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          currency?: string
+          description?: string | null
+          id?: string
+          paypal_transaction_id?: string | null
+          recipient_email?: string | null
+          status?: string
+          type?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -348,6 +390,39 @@ export type Database = {
           created_at?: string | null
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      wallets: {
+        Row: {
+          balance_aoa: number
+          balance_brl: number
+          balance_usd: number
+          created_at: string | null
+          id: string
+          paypal_email: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          balance_aoa?: number
+          balance_brl?: number
+          balance_usd?: number
+          created_at?: string | null
+          id?: string
+          paypal_email?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          balance_aoa?: number
+          balance_brl?: number
+          balance_usd?: number
+          created_at?: string | null
+          id?: string
+          paypal_email?: string | null
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: []
