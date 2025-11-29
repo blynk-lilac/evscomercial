@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,12 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import evsLogo from "@/assets/evs-logo.png";
 
 const Auth = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user, signUp, signIn } = useAuth();
   const defaultMode = searchParams.get("mode") || "login";
 
   const [loginEmail, setLoginEmail] = useState("");
@@ -19,8 +21,16 @@ const Auth = () => {
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [signupName, setSignupName] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      navigate("/dashboard");
+    }
+  }, [user, navigate]);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!loginEmail || !loginPassword) {
@@ -32,15 +42,22 @@ const Auth = () => {
       return;
     }
 
-    // Simulação de login - conectar com backend depois
-    toast({
-      title: "Login realizado!",
-      description: "Bem-vindo de volta à EVS.",
-    });
-    navigate("/dashboard");
+    setLoading(true);
+    const { error } = await signIn(loginEmail, loginPassword);
+    setLoading(false);
+
+    if (error) {
+      toast({
+        title: "Erro no login",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      navigate("/dashboard");
+    }
   };
 
-  const handleSignup = (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!signupEmail || !signupPassword || !signupName) {
@@ -52,12 +69,28 @@ const Auth = () => {
       return;
     }
 
-    // Simulação de cadastro - conectar com backend depois
-    toast({
-      title: "Cadastro realizado!",
-      description: "Sua conta EVS foi criada com sucesso.",
-    });
-    navigate("/dashboard");
+    if (signupPassword.length < 6) {
+      toast({
+        title: "Erro",
+        description: "A senha deve ter no mínimo 6 caracteres.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    const { error } = await signUp(signupEmail, signupPassword, signupName);
+    setLoading(false);
+
+    if (error) {
+      toast({
+        title: "Erro no cadastro",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      navigate("/dashboard");
+    }
   };
 
   return (
@@ -93,6 +126,7 @@ const Auth = () => {
                       placeholder="seu@email.com"
                       value={loginEmail}
                       onChange={(e) => setLoginEmail(e.target.value)}
+                      disabled={loading}
                     />
                   </div>
                   <div className="space-y-2">
@@ -103,12 +137,13 @@ const Auth = () => {
                       placeholder="••••••••"
                       value={loginPassword}
                       onChange={(e) => setLoginPassword(e.target.value)}
+                      disabled={loading}
                     />
                   </div>
                 </CardContent>
                 <CardFooter>
-                  <Button type="submit" className="w-full">
-                    Entrar
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    {loading ? "Entrando..." : "Entrar"}
                   </Button>
                 </CardFooter>
               </form>
@@ -133,6 +168,7 @@ const Auth = () => {
                       placeholder="Seu nome"
                       value={signupName}
                       onChange={(e) => setSignupName(e.target.value)}
+                      disabled={loading}
                     />
                   </div>
                   <div className="space-y-2">
@@ -143,6 +179,7 @@ const Auth = () => {
                       placeholder="seu@email.com"
                       value={signupEmail}
                       onChange={(e) => setSignupEmail(e.target.value)}
+                      disabled={loading}
                     />
                   </div>
                   <div className="space-y-2">
@@ -153,12 +190,13 @@ const Auth = () => {
                       placeholder="••••••••"
                       value={signupPassword}
                       onChange={(e) => setSignupPassword(e.target.value)}
+                      disabled={loading}
                     />
                   </div>
                 </CardContent>
                 <CardFooter>
-                  <Button type="submit" className="w-full">
-                    Criar Conta
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    {loading ? "Criando..." : "Criar Conta"}
                   </Button>
                 </CardFooter>
               </form>

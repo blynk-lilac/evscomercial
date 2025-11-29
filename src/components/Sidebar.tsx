@@ -84,6 +84,16 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
                 Dashboard
               </Button>
             </Link>
+            
+            <Link to="/admin" onClick={onClose}>
+              <Button
+                variant="ghost"
+                className="w-full justify-start gap-3 hover:bg-secondary transition-smooth"
+              >
+                <LayoutDashboard className="h-5 w-5" />
+                Admin
+              </Button>
+            </Link>
           </nav>
 
           {/* Footer */}
