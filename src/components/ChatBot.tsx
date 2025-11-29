@@ -3,14 +3,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { MessageCircle, X, Send, Loader2 } from "lucide-react";
+import { MessageCircle, X, Send, Loader2, Copy, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useToast } from "@/hooks/use-toast";
 import evsLogo from "@/assets/evs-logo.png";
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
+  couponCode?: string;
 }
 
 export const ChatBot = () => {
@@ -23,8 +25,10 @@ export const ChatBot = () => {
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
+  const { toast } = useToast();
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -85,7 +89,8 @@ export const ChatBot = () => {
         } else {
           setMessages(prev => [...prev, {
             role: 'assistant',
-            content: assistantContent + '\n\n🎉 Seu cupom foi gerado com sucesso!\n\n🎫 Código: ' + couponData.coupon + '\n💰 Desconto: 6%\n⏰ Válido por 30 dias\n\n📋 Copie este código e use no carrinho de compras!'
+            content: '🎉 Seu cupom foi gerado com sucesso!\n\n💰 Desconto: 6%\n⏰ Válido por 30 dias\n\n📋 Use o código abaixo no carrinho de compras:',
+            couponCode: couponData.coupon
           }]);
         }
         setIsLoading(false);
@@ -114,6 +119,16 @@ export const ChatBot = () => {
       e.preventDefault();
       handleSend();
     }
+  };
+
+  const handleCopyCoupon = (code: string) => {
+    navigator.clipboard.writeText(code);
+    setCopiedCode(code);
+    toast({
+      title: "Código copiado!",
+      description: "O cupom foi copiado para a área de transferência.",
+    });
+    setTimeout(() => setCopiedCode(null), 2000);
   };
 
   return (
@@ -190,6 +205,29 @@ export const ChatBot = () => {
                         }`}
                       >
                         <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                        
+                        {/* Coupon Code Display */}
+                        {message.couponCode && (
+                          <div className="mt-3 flex gap-2">
+                            <Input
+                              value={message.couponCode}
+                              readOnly
+                              className="flex-1 font-mono text-xs bg-background"
+                            />
+                            <Button
+                              size="icon"
+                              variant="outline"
+                              onClick={() => handleCopyCoupon(message.couponCode!)}
+                              className="flex-shrink-0"
+                            >
+                              {copiedCode === message.couponCode ? (
+                                <Check className="h-4 w-4 text-green-500" />
+                              ) : (
+                                <Copy className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}

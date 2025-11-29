@@ -1,4 +1,4 @@
-import { X, Home, LogIn, UserPlus, LayoutDashboard } from "lucide-react";
+import { X, Home, LogIn, UserPlus, LayoutDashboard, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -97,6 +97,19 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
               >
                 <LayoutDashboard className="h-5 w-5" />
                 Admin
+              </Button>
+            </Link>
+
+            <Separator className="my-4" />
+
+            <Link to="/team" onClick={onClose}>
+              <Button
+                variant="ghost"
+                className="w-full justify-start gap-3 hover:bg-secondary hover:translate-x-1 transition-all duration-200 animate-fade-in"
+                style={{ animationDelay: '0.6s' }}
+              >
+                <Users className="h-5 w-5" />
+                Colaboradores
               </Button>
             </Link>
           </nav>
