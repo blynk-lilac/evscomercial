@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { SignUpWizard, SignUpData } from "@/components/auth/SignUpWizard";
+import { PasswordInput } from "@/components/auth/PasswordInput";
 import evsLogo from "@/assets/evs-logo.png";
 
 const Auth = () => {
@@ -18,9 +20,6 @@ const Auth = () => {
 
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
-  const [signupEmail, setSignupEmail] = useState("");
-  const [signupPassword, setSignupPassword] = useState("");
-  const [signupName, setSignupName] = useState("");
   const [loading, setLoading] = useState(false);
 
   // Redirect if already logged in
@@ -49,67 +48,72 @@ const Auth = () => {
     if (error) {
       toast({
         title: "Erro no login",
-        description: error.message,
+        description: error.message === "Invalid login credentials" 
+          ? "E-mail ou senha incorretos." 
+          : error.message,
         variant: "destructive",
       });
     } else {
+      toast({
+        title: "Login realizado!",
+        description: "Bem-vindo de volta à EVS Fashion.",
+      });
       navigate("/dashboard");
     }
   };
 
-  const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!signupEmail || !signupPassword || !signupName) {
-      toast({
-        title: "Erro",
-        description: "Preencha todos os campos.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (signupPassword.length < 6) {
-      toast({
-        title: "Erro",
-        description: "A senha deve ter no mínimo 6 caracteres.",
-        variant: "destructive",
-      });
-      return;
-    }
-
+  const handleSignupComplete = async (data: SignUpData) => {
     setLoading(true);
-    const { error } = await signUp(signupEmail, signupPassword, signupName);
+    const { error } = await signUp(data.email, data.password, data.fullName, data.username);
     setLoading(false);
 
     if (error) {
-      toast({
-        title: "Erro no cadastro",
-        description: error.message,
-        variant: "destructive",
-      });
+      if (error.message.includes("User already registered")) {
+        toast({
+          title: "Erro no cadastro",
+          description: "Este e-mail já está cadastrado. Tente fazer login.",
+          variant: "destructive",
+        });
+      } else if (error.message.includes("duplicate key value violates unique constraint")) {
+        toast({
+          title: "Erro no cadastro",
+          description: "Este nome de usuário já está em uso. Escolha outro.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Erro no cadastro",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
     } else {
-      navigate("/dashboard");
+      // Redirecionar para página de confirmação de e-mail
+      navigate("/email-confirmation");
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-secondary/20">
+    <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-gradient-to-br from-secondary/30 via-background to-accent/5">
       <div className="w-full max-w-md">
-        <div className="flex flex-col items-center mb-8">
-          <img src={evsLogo} alt="EVS Logo" className="h-20 w-20 mb-4" />
+        <div className="flex flex-col items-center mb-8 animate-fade-in">
+          <img 
+            src={evsLogo} 
+            alt="EVS Logo" 
+            className="h-20 w-20 mb-4 animate-scale-in" 
+          />
           <h1 className="font-serif text-3xl font-bold">EVS Fashion</h1>
           <p className="text-muted-foreground">Mais Que Moda, É Identidade</p>
         </div>
 
         <Tabs defaultValue={defaultMode} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="login">Login</TabsTrigger>
-            <TabsTrigger value="signup">Cadastro</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 mb-4">
+            <TabsTrigger value="login" className="transition-smooth">Login</TabsTrigger>
+            <TabsTrigger value="signup" className="transition-smooth">Cadastro</TabsTrigger>
           </TabsList>
 
           <TabsContent value="login">
-            <Card>
+            <Card className="shadow-strong animate-fade-in">
               <form onSubmit={handleLogin}>
                 <CardHeader>
                   <CardTitle>Entrar na sua conta</CardTitle>
@@ -131,18 +135,21 @@ const Auth = () => {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="login-password">Senha</Label>
-                    <Input
+                    <PasswordInput
                       id="login-password"
-                      type="password"
-                      placeholder="••••••••"
                       value={loginPassword}
-                      onChange={(e) => setLoginPassword(e.target.value)}
+                      onChange={setLoginPassword}
+                      placeholder="••••••••"
                       disabled={loading}
                     />
                   </div>
                 </CardContent>
                 <CardFooter>
-                  <Button type="submit" className="w-full" disabled={loading}>
+                  <Button 
+                    type="submit" 
+                    className="w-full transition-smooth" 
+                    disabled={loading}
+                  >
                     {loading ? "Entrando..." : "Entrar"}
                   </Button>
                 </CardFooter>
@@ -151,56 +158,10 @@ const Auth = () => {
           </TabsContent>
 
           <TabsContent value="signup">
-            <Card>
-              <form onSubmit={handleSignup}>
-                <CardHeader>
-                  <CardTitle>Criar nova conta</CardTitle>
-                  <CardDescription>
-                    Preencha os dados para se cadastrar
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-name">Nome Completo</Label>
-                    <Input
-                      id="signup-name"
-                      type="text"
-                      placeholder="Seu nome"
-                      value={signupName}
-                      onChange={(e) => setSignupName(e.target.value)}
-                      disabled={loading}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-email">Email</Label>
-                    <Input
-                      id="signup-email"
-                      type="email"
-                      placeholder="seu@email.com"
-                      value={signupEmail}
-                      onChange={(e) => setSignupEmail(e.target.value)}
-                      disabled={loading}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-password">Senha</Label>
-                    <Input
-                      id="signup-password"
-                      type="password"
-                      placeholder="••••••••"
-                      value={signupPassword}
-                      onChange={(e) => setSignupPassword(e.target.value)}
-                      disabled={loading}
-                    />
-                  </div>
-                </CardContent>
-                <CardFooter>
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? "Criando..." : "Criar Conta"}
-                  </Button>
-                </CardFooter>
-              </form>
-            </Card>
+            <SignUpWizard 
+              onComplete={handleSignupComplete} 
+              loading={loading}
+            />
           </TabsContent>
         </Tabs>
       </div>
