@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageCircle, X, Send, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useIsMobile } from "@/hooks/use-mobile";
 import evsLogo from "@/assets/evs-logo.png";
 
 interface Message {
@@ -23,6 +24,7 @@ export const ChatBot = () => {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -87,86 +89,109 @@ export const ChatBot = () => {
         </Button>
       )}
 
-      {/* Chat Window */}
+      {/* Chat Window - Fullscreen on Mobile, Card on Desktop */}
       {isOpen && (
-        <Card className="fixed bottom-6 right-6 w-96 h-[600px] shadow-strong z-50 flex flex-col animate-scale-in">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 bg-accent text-accent-foreground rounded-t-lg">
-            <div className="flex items-center gap-3">
-              <img 
-                src={evsLogo} 
-                alt="EVS Logo" 
-                className="h-10 w-10 rounded-full bg-background p-1"
-              />
-              <div>
-                <CardTitle className="text-lg">EVS Comercial</CardTitle>
-                <p className="text-xs opacity-90">Assistente Virtual</p>
+        <div 
+          className={`fixed z-50 animate-scale-in ${
+            isMobile 
+              ? 'inset-0 flex flex-col bg-background'
+              : 'bottom-6 right-6 w-96 h-[600px]'
+          }`}
+        >
+          <Card className={`flex flex-col shadow-strong ${isMobile ? 'h-full border-0 rounded-none' : 'h-full'}`}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 bg-accent text-accent-foreground rounded-t-lg border-b border-accent-foreground/10">
+              <div className="flex items-center gap-3">
+                <img 
+                  src={evsLogo} 
+                  alt="EVS Logo" 
+                  className="h-12 w-12 rounded-full bg-background p-1.5 shadow-md"
+                />
+                <div>
+                  <CardTitle className="text-lg font-semibold">EVS Comercial</CardTitle>
+                  <p className="text-xs opacity-90 flex items-center gap-1">
+                    <span className="inline-block w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                    Online - Assistente Virtual
+                  </p>
+                </div>
               </div>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsOpen(false)}
-              className="hover:bg-accent-foreground/10 transition-smooth"
-            >
-              <X className="h-5 w-5" />
-            </Button>
-          </CardHeader>
-
-          <CardContent className="flex-1 p-0">
-            <ScrollArea className="h-full p-4" ref={scrollRef}>
-              <div className="space-y-4">
-                {messages.map((message, index) => (
-                  <div
-                    key={index}
-                    className={`flex ${
-                      message.role === 'user' ? 'justify-end' : 'justify-start'
-                    } animate-fade-in`}
-                    style={{ animationDelay: `${index * 0.05}s` }}
-                  >
-                    <div
-                      className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                        message.role === 'user'
-                          ? 'bg-accent text-accent-foreground'
-                          : 'bg-secondary text-foreground'
-                      }`}
-                    >
-                      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                    </div>
-                  </div>
-                ))}
-                {isLoading && (
-                  <div className="flex justify-start">
-                    <div className="bg-secondary text-foreground rounded-lg px-4 py-2 flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span className="text-sm">Digitando...</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </ScrollArea>
-          </CardContent>
-
-          <CardFooter className="p-4 border-t">
-            <div className="flex w-full gap-2">
-              <Input
-                placeholder="Digite sua mensagem..."
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyPress={handleKeyPress}
-                disabled={isLoading}
-                className="flex-1"
-              />
               <Button
-                onClick={handleSend}
-                disabled={isLoading || !input.trim()}
+                variant="ghost"
                 size="icon"
-                className="transition-smooth"
+                onClick={() => setIsOpen(false)}
+                className="hover:bg-accent-foreground/10 transition-smooth rounded-full"
               >
-                <Send className="h-4 w-4" />
+                <X className="h-5 w-5" />
               </Button>
-            </div>
-          </CardFooter>
-        </Card>
+            </CardHeader>
+
+            <CardContent className="flex-1 p-0 overflow-hidden">
+              <ScrollArea className="h-full px-4 py-4" ref={scrollRef}>
+                <div className="space-y-3">
+                  {messages.map((message, index) => (
+                    <div
+                      key={index}
+                      className={`flex ${
+                        message.role === 'user' ? 'justify-end' : 'justify-start'
+                      } animate-fade-in`}
+                      style={{ animationDelay: `${index * 0.05}s` }}
+                    >
+                      {message.role === 'assistant' && (
+                        <img 
+                          src={evsLogo} 
+                          alt="EVS" 
+                          className="h-8 w-8 rounded-full bg-accent p-1 mr-2 flex-shrink-0"
+                        />
+                      )}
+                      <div
+                        className={`max-w-[75%] rounded-2xl px-4 py-3 shadow-sm ${
+                          message.role === 'user'
+                            ? 'bg-accent text-accent-foreground rounded-br-sm'
+                            : 'bg-secondary text-foreground rounded-bl-sm'
+                        }`}
+                      >
+                        <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                      </div>
+                    </div>
+                  ))}
+                  {isLoading && (
+                    <div className="flex justify-start items-center gap-2">
+                      <img 
+                        src={evsLogo} 
+                        alt="EVS" 
+                        className="h-8 w-8 rounded-full bg-accent p-1 flex-shrink-0"
+                      />
+                      <div className="bg-secondary text-foreground rounded-2xl rounded-bl-sm px-4 py-3 flex items-center gap-2 shadow-sm">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span className="text-sm">Digitando...</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+            </CardContent>
+
+            <CardFooter className="p-4 border-t bg-muted/30">
+              <div className="flex w-full gap-2">
+                <Input
+                  placeholder="Digite sua mensagem..."
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  disabled={isLoading}
+                  className="flex-1 rounded-full bg-background border-border/50 focus:border-accent transition-smooth"
+                />
+                <Button
+                  onClick={handleSend}
+                  disabled={isLoading || !input.trim()}
+                  size="icon"
+                  className="rounded-full transition-smooth hover:scale-105 bg-accent hover:bg-accent/90"
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardFooter>
+          </Card>
+        </div>
       )}
     </>
   );
