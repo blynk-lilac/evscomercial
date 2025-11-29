@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { User, Settings, CreditCard, LogOut, Shield, Camera } from "lucide-react";
+import { useState, useEffect } from "react";
+import { User as UserIcon, Settings, CreditCard, LogOut, Shield, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,22 +10,47 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 const Dashboard = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { user, signOut } = useAuth();
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [profileImage, setProfileImage] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [loading, setLoading] = useState(true);
 
-  const handleLogout = () => {
-    toast({
-      title: "Sessão encerrada",
-      description: "Até logo!",
-    });
+  useEffect(() => {
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
+
+    const loadProfile = async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (data) {
+        setFullName(data.full_name || '');
+        setProfileImage(data.avatar_url || '');
+      }
+      setLoading(false);
+    };
+
+    loadProfile();
+  }, [user, navigate]);
+
+  const handleLogout = async () => {
+    await signOut();
     navigate("/");
   };
 
-  const handlePasswordChange = (e: React.FormEvent) => {
+  const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     toast({
       title: "Senha alterada",
@@ -33,19 +58,39 @@ const Dashboard = () => {
     });
   };
 
+  const handleProfileUpdate = async () => {
+    if (!user) return;
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ full_name: fullName, avatar_url: profileImage })
+      .eq('id', user.id);
+
+    if (error) {
+      toast({
+        title: "Erro",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Perfil atualizado",
+        description: "Suas informações foram salvas.",
+      });
+    }
+  };
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Validar dimensões e formato
       const reader = new FileReader();
       reader.onload = (event) => {
         const img = new Image();
         img.onload = () => {
-          // Aqui você pode adicionar validação de dimensões
           setProfileImage(event.target?.result as string);
           toast({
-            title: "Foto atualizada",
-            description: "Sua foto de perfil foi alterada.",
+            title: "Foto selecionada",
+            description: "Clique em 'Salvar Alterações' para confirmar.",
           });
         };
         img.src = event.target?.result as string;
@@ -53,6 +98,10 @@ const Dashboard = () => {
       reader.readAsDataURL(file);
     }
   };
+
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
+  }
 
   return (
     <div className="min-h-screen pt-20 pb-12 px-4">
@@ -72,12 +121,11 @@ const Dashboard = () => {
             <TabsTrigger value="bank">Banco</TabsTrigger>
           </TabsList>
 
-          {/* Perfil */}
           <TabsContent value="profile" className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <User className="h-5 w-5" />
+                  <UserIcon className="h-5 w-5" />
                   Informações do Perfil
                 </CardTitle>
                 <CardDescription>
@@ -88,7 +136,9 @@ const Dashboard = () => {
                 <div className="flex items-center gap-6">
                   <Avatar className="h-24 w-24">
                     <AvatarImage src={profileImage} />
-                    <AvatarFallback className="text-2xl">EV</AvatarFallback>
+                    <AvatarFallback className="text-2xl">
+                      {fullName?.substring(0, 2).toUpperCase() || 'EV'}
+                    </AvatarFallback>
                   </Avatar>
                   <div>
                     <Label htmlFor="avatar-upload" className="cursor-pointer">
@@ -115,19 +165,22 @@ const Dashboard = () => {
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label>Nome Completo</Label>
-                    <Input placeholder="Seu nome" />
+                    <Input
+                      placeholder="Seu nome"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>Email</Label>
-                    <Input type="email" placeholder="seu@email.com" />
+                    <Input type="email" value={user?.email || ''} disabled />
                   </div>
-                  <Button>Salvar Alterações</Button>
+                  <Button onClick={handleProfileUpdate}>Salvar Alterações</Button>
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
 
-          {/* Definições */}
           <TabsContent value="settings" className="space-y-6">
             <Card>
               <CardHeader>
@@ -192,7 +245,6 @@ const Dashboard = () => {
             </Card>
           </TabsContent>
 
-          {/* Banco */}
           <TabsContent value="bank" className="space-y-6">
             <Card>
               <CardHeader>
