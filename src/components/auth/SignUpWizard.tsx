@@ -15,7 +15,6 @@ interface SignUpWizardProps {
 
 export interface SignUpData {
   fullName: string;
-  username: string;
   email: string;
   password: string;
   confirmPassword: string;
@@ -27,13 +26,12 @@ export const SignUpWizard = ({ onComplete, loading }: SignUpWizardProps) => {
   
   const [formData, setFormData] = useState<SignUpData>({
     fullName: "",
-    username: "",
     email: "",
     password: "",
     confirmPassword: "",
   });
 
-  const totalSteps = 5;
+  const totalSteps = 4;
   const progress = (currentStep / totalSteps) * 100;
 
   const validateStep = (step: number): boolean => {
@@ -50,26 +48,6 @@ export const SignUpWizard = ({ onComplete, loading }: SignUpWizardProps) => {
         return true;
       
       case 2:
-        const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
-        if (!formData.username.trim()) {
-          toast({
-            title: "Erro",
-            description: "Digite um nome de usuário.",
-            variant: "destructive",
-          });
-          return false;
-        }
-        if (!usernameRegex.test(formData.username)) {
-          toast({
-            title: "Erro",
-            description: "Nome de usuário inválido. Use apenas letras, números e _ (3-20 caracteres).",
-            variant: "destructive",
-          });
-          return false;
-        }
-        return true;
-      
-      case 3:
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(formData.email)) {
           toast({
@@ -81,7 +59,7 @@ export const SignUpWizard = ({ onComplete, loading }: SignUpWizardProps) => {
         }
         return true;
       
-      case 4:
+      case 3:
         if (formData.password.length < 6) {
           toast({
             title: "Erro",
@@ -120,7 +98,7 @@ export const SignUpWizard = ({ onComplete, loading }: SignUpWizardProps) => {
   };
 
   const handleSubmit = async () => {
-    if (validateStep(4)) {
+    if (validateStep(3)) {
       await onComplete(formData);
     }
   };
@@ -155,27 +133,6 @@ export const SignUpWizard = ({ onComplete, loading }: SignUpWizardProps) => {
       case 2:
         return (
           <div className="space-y-3 animate-fade-in">
-            <Label htmlFor="username" className="text-base font-semibold">Nome de Usuário</Label>
-            <Input
-              id="username"
-              type="text"
-              placeholder="seu_username"
-              value={formData.username}
-              onChange={(e) => updateFormData("username", e.target.value.toLowerCase())}
-              disabled={loading}
-              autoFocus
-              className="h-12 text-base border-2 focus:border-accent/50 transition-all"
-            />
-            <p className="text-sm text-muted-foreground flex items-center gap-2">
-              <span className="text-accent">💡</span>
-              Use apenas letras, números e _ (3-20 caracteres)
-            </p>
-          </div>
-        );
-      
-      case 3:
-        return (
-          <div className="space-y-3 animate-fade-in">
             <Label htmlFor="email" className="text-base font-semibold">E-mail</Label>
             <Input
               id="email"
@@ -189,12 +146,12 @@ export const SignUpWizard = ({ onComplete, loading }: SignUpWizardProps) => {
             />
             <p className="text-sm text-muted-foreground flex items-center gap-2">
               <span className="text-accent">📧</span>
-              Enviaremos um link de confirmação para este e-mail
+              Digite seu melhor e-mail
             </p>
           </div>
         );
       
-      case 4:
+      case 3:
         return (
           <div className="space-y-5 animate-fade-in">
             <div className="space-y-3">
@@ -225,7 +182,7 @@ export const SignUpWizard = ({ onComplete, loading }: SignUpWizardProps) => {
           </div>
         );
       
-      case 5:
+      case 4:
         return (
           <div className="space-y-6 animate-fade-in">
             <div className="rounded-2xl bg-gradient-to-br from-accent/10 via-accent/5 to-transparent p-6 border-2 border-accent/20 space-y-4 shadow-medium">
@@ -240,10 +197,6 @@ export const SignUpWizard = ({ onComplete, loading }: SignUpWizardProps) => {
                   <span className="font-semibold text-foreground">{formData.fullName}</span>
                 </div>
                 <div className="flex justify-between items-center p-3 rounded-lg bg-background/50 border border-border/50">
-                  <span className="text-muted-foreground font-medium">Usuário:</span>
-                  <span className="font-semibold text-accent">@{formData.username}</span>
-                </div>
-                <div className="flex justify-between items-center p-3 rounded-lg bg-background/50 border border-border/50">
                   <span className="text-muted-foreground font-medium">E-mail:</span>
                   <span className="font-semibold text-foreground">{formData.email}</span>
                 </div>
@@ -252,12 +205,11 @@ export const SignUpWizard = ({ onComplete, loading }: SignUpWizardProps) => {
             
             <div className="rounded-2xl bg-accent/10 border-2 border-accent/30 p-5 shadow-medium">
               <div className="flex gap-3">
-                <span className="text-2xl">📧</span>
+                <span className="text-2xl">✨</span>
                 <div>
-                  <p className="font-semibold text-accent mb-2">Confirmação por E-mail</p>
+                  <p className="font-semibold text-accent mb-2">Pronto para começar!</p>
                   <p className="text-sm text-accent-foreground/90 leading-relaxed">
-                    Após criar sua conta, você receberá um e-mail de confirmação. 
-                    Clique no link para ativar sua conta EVS e começar suas compras!
+                    Sua conta será criada imediatamente e você já poderá fazer login e começar suas compras na EVS!
                   </p>
                 </div>
               </div>
@@ -288,10 +240,9 @@ export const SignUpWizard = ({ onComplete, loading }: SignUpWizardProps) => {
         <Progress value={progress} className="h-3 shadow-sm" />
         <CardDescription className="text-base pt-2">
           {currentStep === 1 && "✨ Primeiro, vamos saber seu nome"}
-          {currentStep === 2 && "🎯 Escolha um nome de usuário único"}
-          {currentStep === 3 && "📧 Digite seu melhor e-mail"}
-          {currentStep === 4 && "🔒 Crie uma senha segura"}
-          {currentStep === 5 && "✅ Confirme seus dados e finalize"}
+          {currentStep === 2 && "📧 Digite seu melhor e-mail"}
+          {currentStep === 3 && "🔒 Crie uma senha segura"}
+          {currentStep === 4 && "✅ Confirme seus dados e finalize"}
         </CardDescription>
       </CardHeader>
       
