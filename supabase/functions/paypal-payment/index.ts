@@ -71,6 +71,46 @@ serve(async (req) => {
     let result;
 
     switch (action) {
+      case 'checkout':
+        // Process checkout payment - customer pays, money goes to merchant
+        const checkoutResponse = await fetch('https://api-m.paypal.com/v2/checkout/orders', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            intent: 'CAPTURE',
+            purchase_units: [{
+              amount: {
+                currency_code: 'USD',
+                value: convertCurrency(amount, currency, 'USD').toFixed(2),
+              },
+              payee: {
+                email_address: 'isaacmuaco582@gmail.com'
+              }
+            }],
+            application_context: {
+              return_url: `${Deno.env.get('VITE_SUPABASE_URL')}/payment-success`,
+              cancel_url: `${Deno.env.get('VITE_SUPABASE_URL')}/payment-cancel`
+            }
+          }),
+        });
+        
+        result = await checkoutResponse.json();
+        
+        // Create transaction record for checkout
+        await supabase.from('transactions').insert({
+          user_id: user.id,
+          type: 'checkout',
+          amount,
+          currency,
+          status: 'pending',
+          paypal_transaction_id: result.id,
+          description: 'Pagamento de compra no carrinho',
+        });
+        break;
+
       case 'deposit':
         // Create PayPal order for deposit
         const orderResponse = await fetch('https://api-m.paypal.com/v2/checkout/orders', {

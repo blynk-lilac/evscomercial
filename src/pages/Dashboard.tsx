@@ -39,7 +39,7 @@ const Dashboard = () => {
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"profile" | "settings" | "bank">("profile");
+  const [activeTab, setActiveTab] = useState<"profile" | "bank">("profile");
   
   // Wallet states
   const [wallet, setWallet] = useState<any>(null);
@@ -201,11 +201,21 @@ const Dashboard = () => {
   const handleWithdrawal = async () => {
     if (!withdrawAmount || !user) return;
 
+    const amount = parseFloat(withdrawAmount);
+    if (amount < 100 || amount > 200) {
+      toast({
+        title: "Erro",
+        description: "O valor de levantamento deve ser entre 100 e 200.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       const { data, error } = await supabase.functions.invoke('paypal-payment', {
         body: {
           action: 'withdrawal',
-          amount: parseFloat(withdrawAmount),
+          amount,
           currency: selectedCurrency,
           recipient_email: 'isaacmuaco582@gmail.com',
         },
@@ -388,75 +398,6 @@ const Dashboard = () => {
             </Card>
           )}
 
-          {/* Settings Tab */}
-          {activeTab === "settings" && (
-            <Card className="animate-in fade-in-50 duration-500">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Settings className="h-5 w-5" />
-                  Configurações de Segurança
-                </CardTitle>
-                <CardDescription>
-                  Gerencie senha e autenticação
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <form onSubmit={handlePasswordChange} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label className="text-base font-medium">Senha Atual</Label>
-                    <Input type="password" placeholder="••••••••" className="h-12 text-lg" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-base font-medium">Nova Senha</Label>
-                    <Input type="password" placeholder="••••••••" className="h-12 text-lg" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-base font-medium">Confirmar Nova Senha</Label>
-                    <Input type="password" placeholder="••••••••" className="h-12 text-lg" />
-                  </div>
-                  <Button type="submit" className="w-full h-12 text-lg">
-                    Alterar Senha
-                  </Button>
-                </form>
-
-                <Separator />
-
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <Shield className="h-6 w-6 text-accent" />
-                      <div>
-                        <p className="font-medium text-lg">Autenticação de Dois Fatores</p>
-                        <p className="text-sm text-muted-foreground">
-                          Senha de 4 dígitos para proteção adicional
-                        </p>
-                      </div>
-                    </div>
-                    <Switch
-                      checked={twoFactorEnabled}
-                      onCheckedChange={setTwoFactorEnabled}
-                    />
-                  </div>
-
-                  {twoFactorEnabled && (
-                    <div className="space-y-2 pl-7 animate-in slide-in-from-top duration-300">
-                      <Label className="text-base font-medium">Código de 4 Dígitos</Label>
-                      <div className="flex gap-2">
-                        <Input
-                          type="text"
-                          maxLength={4}
-                          placeholder="0000"
-                          className="w-32 h-12 text-lg text-center"
-                        />
-                        <Button size="lg">Configurar</Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
           {/* Bank Tab */}
           {activeTab === "bank" && (
             <div className="space-y-6 animate-in fade-in-50 duration-500">
@@ -486,7 +427,7 @@ const Dashboard = () => {
               </Card>
 
               {/* Actions Grid */}
-              <div className="grid md:grid-cols-3 gap-4">
+              <div className="grid md:grid-cols-2 gap-4">
                 {/* Deposit */}
                 <Dialog>
                   <DialogTrigger asChild>
@@ -531,7 +472,7 @@ const Dashboard = () => {
                       <CardContent className="p-6 text-center">
                         <ArrowUpCircle className="h-12 w-12 mx-auto mb-3 text-red-600" />
                         <h3 className="font-semibold text-lg">Levantar</h3>
-                        <p className="text-sm text-muted-foreground">Sacar fundos</p>
+                        <p className="text-sm text-muted-foreground">Sacar (Mín: 100, Máx: 200)</p>
                       </CardContent>
                     </Card>
                   </DialogTrigger>
@@ -544,10 +485,12 @@ const Dashboard = () => {
                     </DialogHeader>
                     <div className="space-y-4 pt-4">
                       <div className="space-y-2">
-                        <Label>Valor</Label>
+                        <Label>Valor (Mínimo: 100, Máximo: 200)</Label>
                         <Input
                           type="number"
-                          placeholder="0.00"
+                          placeholder="100.00"
+                          min="100"
+                          max="200"
                           value={withdrawAmount}
                           onChange={(e) => setWithdrawAmount(e.target.value)}
                           className="h-12 text-lg"
@@ -560,51 +503,6 @@ const Dashboard = () => {
                   </DialogContent>
                 </Dialog>
 
-                {/* Transfer */}
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Card className="cursor-pointer hover:shadow-lg transition-smooth">
-                      <CardContent className="p-6 text-center">
-                        <Send className="h-12 w-12 mx-auto mb-3 text-blue-600" />
-                        <h3 className="font-semibold text-lg">Transferir</h3>
-                        <p className="text-sm text-muted-foreground">Enviar para outro</p>
-                      </CardContent>
-                    </Card>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Transferência Bancária</DialogTitle>
-                      <DialogDescription>
-                        Envie fundos para outra conta
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 pt-4">
-                      <div className="space-y-2">
-                        <Label>Email do Destinatário</Label>
-                        <Input
-                          type="email"
-                          placeholder="email@exemplo.com"
-                          value={recipientEmail}
-                          onChange={(e) => setRecipientEmail(e.target.value)}
-                          className="h-12 text-lg"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Valor</Label>
-                        <Input
-                          type="number"
-                          placeholder="0.00"
-                          value={transferAmount}
-                          onChange={(e) => setTransferAmount(e.target.value)}
-                          className="h-12 text-lg"
-                        />
-                      </div>
-                      <Button onClick={handleTransfer} className="w-full h-12">
-                        Confirmar Transferência
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
               </div>
 
               {/* Transactions History */}
@@ -656,7 +554,7 @@ const Dashboard = () => {
       {/* Footer Navigation */}
       <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border">
         <div className="container mx-auto max-w-5xl">
-          <div className="grid grid-cols-3 gap-2 p-2">
+          <div className="grid grid-cols-2 gap-2 p-2">
             <Button
               variant={activeTab === "profile" ? "default" : "ghost"}
               onClick={() => setActiveTab("profile")}
@@ -664,14 +562,6 @@ const Dashboard = () => {
             >
               <UserIcon className="h-5 w-5" />
               <span className="text-xs">Perfil</span>
-            </Button>
-            <Button
-              variant={activeTab === "settings" ? "default" : "ghost"}
-              onClick={() => setActiveTab("settings")}
-              className="flex flex-col h-16 gap-1"
-            >
-              <Settings className="h-5 w-5" />
-              <span className="text-xs">Definições</span>
             </Button>
             <Button
               variant={activeTab === "bank" ? "default" : "ghost"}
