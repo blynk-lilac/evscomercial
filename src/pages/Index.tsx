@@ -19,7 +19,6 @@ interface Product {
 
 const Index = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [cartCount, setCartCount] = useState(0);
   const [regionFilter, setRegionFilter] = useState<"all" | "Brasil" | "Angola">("all");
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,14 +47,6 @@ const Index = () => {
     setLoading(false);
   };
 
-  const handleAddToCart = (productId: string) => {
-    setCartCount((prev) => prev + 1);
-    toast({
-      title: "Produto adicionado!",
-      description: "O item foi adicionado ao seu carrinho.",
-    });
-  };
-
   const filteredProducts =
     regionFilter === "all"
       ? products
@@ -63,7 +54,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header onMenuClick={() => setSidebarOpen(true)} cartItemCount={cartCount} />
+      <Header onMenuClick={() => setSidebarOpen(true)} />
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       {/* Hero Section */}
@@ -116,7 +107,6 @@ const Index = () => {
                   currency={product.currency}
                   image={getProductImage(product.image_url)}
                   category={product.category}
-                  onAddToCart={handleAddToCart}
                 />
               ))}
             </div>
