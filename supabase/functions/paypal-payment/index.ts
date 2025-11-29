@@ -31,7 +31,10 @@ function convertCurrency(amount: number, fromCurrency: string, toCurrency: strin
 
 async function getPayPalAccessToken(clientId: string, secretKey: string): Promise<string> {
   const auth = btoa(`${clientId}:${secretKey}`);
-  const response = await fetch('https://api-m.paypal.com/v1/oauth2/token', {
+  const paypalUrl = 'https://api-m.sandbox.paypal.com/v1/oauth2/token';
+  
+  console.log('Requesting PayPal access token...');
+  const response = await fetch(paypalUrl, {
     method: 'POST',
     headers: {
       'Authorization': `Basic ${auth}`,
@@ -41,6 +44,13 @@ async function getPayPalAccessToken(clientId: string, secretKey: string): Promis
   });
 
   const data = await response.json();
+  
+  if (!response.ok) {
+    console.error('PayPal auth error:', data);
+    throw new Error(`PayPal authentication failed: ${data.error_description || data.error}`);
+  }
+  
+  console.log('PayPal access token obtained successfully');
   return data.access_token;
 }
 
@@ -73,7 +83,10 @@ serve(async (req) => {
     switch (action) {
       case 'checkout':
         // Process checkout payment - customer pays, money goes to merchant
-        const checkoutResponse = await fetch('https://api-m.paypal.com/v2/checkout/orders', {
+        const usdAmount = convertCurrency(amount, currency, 'USD').toFixed(2);
+        console.log(`Creating checkout order for ${usdAmount} USD (${amount} ${currency})`);
+        
+        const checkoutResponse = await fetch('https://api-m.sandbox.paypal.com/v2/checkout/orders', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -84,20 +97,38 @@ serve(async (req) => {
             purchase_units: [{
               amount: {
                 currency_code: 'USD',
-                value: convertCurrency(amount, currency, 'USD').toFixed(2),
+                value: usdAmount,
               },
               payee: {
                 email_address: 'isaacmuaco582@gmail.com'
               }
             }],
             application_context: {
-              return_url: `${Deno.env.get('VITE_SUPABASE_URL')}/payment-success`,
-              cancel_url: `${Deno.env.get('VITE_SUPABASE_URL')}/payment-cancel`
+              return_url: `${req.headers.get('origin')}/payment-success`,
+              cancel_url: `${req.headers.get('origin')}/cart`,
+              brand_name: 'EVS Comercial',
+              user_action: 'PAY_NOW'
             }
           }),
         });
         
         result = await checkoutResponse.json();
+        
+        if (!checkoutResponse.ok) {
+          console.error('PayPal checkout error:', result);
+          throw new Error(`PayPal checkout failed: ${result.message || 'Unknown error'}`);
+        }
+        
+        console.log('PayPal order created:', result.id);
+        
+        // Find approval URL
+        const approvalUrl = result.links?.find((link: any) => link.rel === 'approve')?.href;
+        if (!approvalUrl) {
+          console.error('No approval URL in PayPal response:', result);
+          throw new Error('URL de aprovação não encontrada na resposta do PayPal');
+        }
+        
+        console.log('Approval URL:', approvalUrl);
         
         // Create transaction record for checkout
         await supabase.from('transactions').insert({
@@ -109,11 +140,14 @@ serve(async (req) => {
           paypal_transaction_id: result.id,
           description: 'Pagamento de compra no carrinho',
         });
+        
+        // Return result with approval URL
+        result.approval_url = approvalUrl;
         break;
 
       case 'deposit':
         // Create PayPal order for deposit
-        const orderResponse = await fetch('https://api-m.paypal.com/v2/checkout/orders', {
+        const orderResponse = await fetch('https://api-m.sandbox.paypal.com/v2/checkout/orders', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -171,7 +205,7 @@ serve(async (req) => {
         // Create PayPal payout for withdrawal
         const amountInUSD = convertCurrency(amount, currency, 'USD');
         
-        const payoutResponse = await fetch('https://api-m.paypal.com/v1/payments/payouts', {
+        const payoutResponse = await fetch('https://api-m.sandbox.paypal.com/v1/payments/payouts', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -249,7 +283,7 @@ serve(async (req) => {
         // Bank transfer via PayPal
         const transferAmountUSD = convertCurrency(amount, currency, 'USD');
         
-        const transferResponse = await fetch('https://api-m.paypal.com/v1/payments/payouts', {
+        const transferResponse = await fetch('https://api-m.sandbox.paypal.com/v1/payments/payouts', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${accessToken}`,
