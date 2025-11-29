@@ -53,7 +53,7 @@ export const ProductCard = ({
   };
 
   return (
-    <Card className="group overflow-hidden border-border hover:shadow-medium transition-all duration-300 cursor-pointer animate-fade-in">
+    <Card className="group overflow-hidden border-border hover:shadow-strong transition-all duration-300 cursor-pointer animate-fade-in hover:-translate-y-1">
       <div 
         className="relative overflow-hidden aspect-[3/4] bg-secondary"
         onClick={() => navigate(`/product/${id}`)}
@@ -61,29 +61,37 @@ export const ProductCard = ({
         <img
           src={image}
           alt={name}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
         />
         {category && (
-          <Badge className="absolute top-3 left-3 bg-accent text-accent-foreground">
+          <Badge className="absolute top-3 left-3 bg-accent text-accent-foreground shadow-medium">
             {category}
+          </Badge>
+        )}
+        {reviewCount > 0 && (
+          <Badge className="absolute bottom-3 left-3 bg-background/90 text-foreground shadow-medium backdrop-blur-sm">
+            ⭐ {rating.toFixed(1)} ({reviewCount})
           </Badge>
         )}
         <Button
           variant="ghost"
           size="icon"
-          className="absolute top-3 right-3 bg-background/80 hover:bg-background transition-smooth"
-          onClick={() => setIsLiked(!isLiked)}
+          className="absolute top-3 right-3 bg-background/80 hover:bg-background hover:scale-110 transition-all duration-200"
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsLiked(!isLiked);
+          }}
         >
           <Heart
-            className={`h-5 w-5 ${isLiked ? "fill-accent text-accent" : ""}`}
+            className={`h-5 w-5 transition-smooth ${isLiked ? "fill-accent text-accent" : ""}`}
           />
         </Button>
       </div>
 
-      <CardContent className="p-4" onClick={() => navigate(`/product/${id}`)}>
-        <h3 className="font-semibold text-lg mb-2 line-clamp-2">{name}</h3>
+      <CardContent className="p-4 cursor-pointer" onClick={() => navigate(`/product/${id}`)}>
+        <h3 className="font-semibold text-lg mb-2 line-clamp-2 group-hover:text-accent transition-smooth">{name}</h3>
         
-        {reviewCount > 0 && (
+        {reviewCount > 0 ? (
           <div className="flex items-center gap-2 mb-2">
             <div className="flex items-center gap-1">
               {[1, 2, 3, 4, 5].map((star) => (
@@ -101,11 +109,21 @@ export const ProductCard = ({
               ({reviewCount} {reviewCount === 1 ? 'avaliação' : 'avaliações'})
             </span>
           </div>
+        ) : (
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-sm text-muted-foreground">
+              Seja o primeiro a avaliar!
+            </span>
+          </div>
         )}
         
-        <div className="flex items-baseline gap-2">
+        <div className="flex items-baseline gap-2 mb-2">
           <span className="text-2xl font-bold">{currency}</span>
           <span className="text-2xl font-bold">{price.toFixed(2)}</span>
+        </div>
+        
+        <div className="text-sm text-accent font-medium opacity-0 group-hover:opacity-100 transition-smooth">
+          Clique para ver detalhes e avaliar →
         </div>
       </CardContent>
 
