@@ -9,6 +9,11 @@ import productBeigeSet from "@/assets/product-beige-set.jpg";
 import productSportswear from "@/assets/product-sportswear.jpg";
 import productTiedyeSet from "@/assets/product-tiedye-set.jpg";
 import productTiedyeHoodie from "@/assets/product-tiedye-hoodie.jpg";
+import productShirtWhite from "@/assets/product-shirt-white.jpg";
+import productGrayPromo from "@/assets/product-gray-promo.jpg";
+import productBeigePromo from "@/assets/product-beige-promo.jpg";
+import productShirtsColors from "@/assets/product-shirts-colors.jpg";
+import productFitnessFemale from "@/assets/product-fitness-female.jpg";
 
 export const imageMap: Record<string, string> = {
   "product-shirt.jpg": productShirt,
@@ -21,6 +26,11 @@ export const imageMap: Record<string, string> = {
   "product-sportswear.jpg": productSportswear,
   "product-tiedye-set.jpg": productTiedyeSet,
   "product-tiedye-hoodie.jpg": productTiedyeHoodie,
+  "product-shirt-white.jpg": productShirtWhite,
+  "product-gray-promo.jpg": productGrayPromo,
+  "product-beige-promo.jpg": productBeigePromo,
+  "product-shirts-colors.jpg": productShirtsColors,
+  "product-fitness-female.jpg": productFitnessFemale,
 };
 
 export const getProductImage = (imageName: string | null): string => {
