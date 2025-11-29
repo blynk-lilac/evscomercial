@@ -29,20 +29,20 @@ export const PasswordInput = ({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
-        className="pr-10"
+        className="pr-12 h-12 text-base border-2 focus:border-accent/50 transition-all"
       />
       <Button
         type="button"
         variant="ghost"
         size="icon"
-        className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+        className="absolute right-0 top-0 h-full px-3 hover:bg-accent/10 hover:text-accent transition-colors"
         onClick={() => setShowPassword(!showPassword)}
         disabled={disabled}
       >
         {showPassword ? (
-          <EyeOff className="h-4 w-4 text-muted-foreground" />
+          <EyeOff className="h-5 w-5 text-muted-foreground" />
         ) : (
-          <Eye className="h-4 w-4 text-muted-foreground" />
+          <Eye className="h-5 w-5 text-muted-foreground" />
         )}
       </Button>
     </div>
