@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
@@ -32,6 +32,7 @@ import {
 const Dashboard = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user, signOut } = useAuth();
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [profileImage, setProfileImage] = useState("");
@@ -49,6 +50,36 @@ const Dashboard = () => {
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [transferAmount, setTransferAmount] = useState("");
   const [recipientEmail, setRecipientEmail] = useState("");
+
+  // Handle deposit success callback from PayPal
+  useEffect(() => {
+    const depositSuccess = searchParams.get('deposit_success');
+    const depositCancelled = searchParams.get('deposit_cancelled');
+    
+    if (depositSuccess === 'true') {
+      const amount = searchParams.get('amount');
+      const currency = searchParams.get('currency');
+      
+      toast({
+        title: "Depósito pendente",
+        description: `Seu depósito de ${currency} ${amount} foi iniciado. Por favor, aguarde a confirmação.`,
+      });
+      
+      // Clear URL params
+      setSearchParams({});
+      setActiveTab("bank");
+    }
+    
+    if (depositCancelled === 'true') {
+      toast({
+        title: "Depósito cancelado",
+        description: "O depósito foi cancelado.",
+        variant: "destructive",
+      });
+      setSearchParams({});
+      setActiveTab("bank");
+    }
+  }, [searchParams, setSearchParams, toast]);
 
   useEffect(() => {
     if (!user) {
@@ -183,16 +214,23 @@ const Dashboard = () => {
 
       if (error) throw error;
 
-      toast({
-        title: "Depósito iniciado",
-        description: "Você será redirecionado para o PayPal para concluir o pagamento.",
-      });
+      if (data?.success && data?.data?.approval_url) {
+        toast({
+          title: "Redirecionando para PayPal",
+          description: "Você será redirecionado para concluir o pagamento.",
+        });
+        window.location.href = data.data.approval_url;
+      } else if (data?.error) {
+        throw new Error(data.error);
+      } else {
+        throw new Error('Resposta inválida do servidor');
+      }
 
       setDepositAmount("");
     } catch (error: any) {
       toast({
-        title: "Erro",
-        description: error.message,
+        title: "Erro no Depósito",
+        description: error.message || 'Erro desconhecido',
         variant: "destructive",
       });
     }
@@ -217,30 +255,43 @@ const Dashboard = () => {
           action: 'withdrawal',
           amount,
           currency: selectedCurrency,
-          recipient_email: 'isaacmuaco582@gmail.com',
+          recipient_email: wallet?.paypal_email || user.email,
         },
       });
 
       if (error) throw error;
 
-      toast({
-        title: "Levantamento processado",
-        description: "O valor será enviado para sua conta PayPal em breve.",
-      });
+      if (data?.success) {
+        toast({
+          title: "Levantamento processado",
+          description: `O valor será enviado para ${wallet?.paypal_email || user.email}.`,
+        });
+        
+        // Update local wallet state with new balance
+        if (data.data?.new_balance !== undefined) {
+          setWallet((prev: any) => ({
+            ...prev,
+            [`balance_${selectedCurrency.toLowerCase()}`]: data.data.new_balance,
+          }));
+        }
+      } else if (data?.error) {
+        throw new Error(data.error);
+      }
 
       setWithdrawAmount("");
       
-      // Reload wallet
-      const { data: walletData } = await supabase
-        .from('wallets')
+      // Reload transactions
+      const { data: txData } = await supabase
+        .from('transactions')
         .select('*')
         .eq('user_id', user.id)
-        .single();
-      setWallet(walletData);
+        .order('created_at', { ascending: false })
+        .limit(10);
+      setTransactions(txData || []);
     } catch (error: any) {
       toast({
-        title: "Erro",
-        description: error.message,
+        title: "Erro no Levantamento",
+        description: error.message || 'Erro desconhecido',
         variant: "destructive",
       });
     }
@@ -261,25 +312,38 @@ const Dashboard = () => {
 
       if (error) throw error;
 
-      toast({
-        title: "Transferência realizada",
-        description: `Valor enviado para ${recipientEmail}`,
-      });
+      if (data?.success) {
+        toast({
+          title: "Transferência realizada",
+          description: `Valor enviado para ${recipientEmail}`,
+        });
+        
+        // Update local wallet state
+        if (data.data?.new_balance !== undefined) {
+          setWallet((prev: any) => ({
+            ...prev,
+            [`balance_${selectedCurrency.toLowerCase()}`]: data.data.new_balance,
+          }));
+        }
+      } else if (data?.error) {
+        throw new Error(data.error);
+      }
 
       setTransferAmount("");
       setRecipientEmail("");
 
-      // Reload wallet
-      const { data: walletData } = await supabase
-        .from('wallets')
+      // Reload transactions
+      const { data: txData } = await supabase
+        .from('transactions')
         .select('*')
         .eq('user_id', user.id)
-        .single();
-      setWallet(walletData);
+        .order('created_at', { ascending: false })
+        .limit(10);
+      setTransactions(txData || []);
     } catch (error: any) {
       toast({
-        title: "Erro",
-        description: error.message,
+        title: "Erro na Transferência",
+        description: error.message || 'Erro desconhecido',
         variant: "destructive",
       });
     }
@@ -498,6 +562,53 @@ const Dashboard = () => {
                       </div>
                       <Button onClick={handleWithdrawal} className="w-full h-12">
                         Confirmar Levantamento
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+
+                {/* Transfer */}
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Card className="cursor-pointer hover:shadow-lg transition-smooth">
+                      <CardContent className="p-6 text-center">
+                        <Send className="h-12 w-12 mx-auto mb-3 text-blue-600" />
+                        <h3 className="font-semibold text-lg">Transferir</h3>
+                        <p className="text-sm text-muted-foreground">Enviar para email PayPal</p>
+                      </CardContent>
+                    </Card>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Transferência via PayPal</DialogTitle>
+                      <DialogDescription>
+                        Transfira fundos para outro email PayPal
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 pt-4">
+                      <div className="space-y-2">
+                        <Label>Email do destinatário (PayPal)</Label>
+                        <Input
+                          type="email"
+                          placeholder="email@exemplo.com"
+                          value={recipientEmail}
+                          onChange={(e) => setRecipientEmail(e.target.value)}
+                          className="h-12 text-lg"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Valor</Label>
+                        <Input
+                          type="number"
+                          placeholder="0.00"
+                          value={transferAmount}
+                          onChange={(e) => setTransferAmount(e.target.value)}
+                          className="h-12 text-lg"
+                        />
+                      </div>
+                      <Button onClick={handleTransfer} className="w-full h-12 bg-blue-600 hover:bg-blue-700">
+                        <Send className="mr-2 h-4 w-4" />
+                        Confirmar Transferência
                       </Button>
                     </div>
                   </DialogContent>
