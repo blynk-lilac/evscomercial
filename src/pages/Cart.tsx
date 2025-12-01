@@ -177,18 +177,18 @@ const Cart = () => {
         throw error;
       }
 
-      if (!data || !data.data) {
-        throw new Error('Resposta inválida do PayPal');
-      }
-
-      // Redirect to PayPal approval URL
-      const approvalUrl = data.data.links?.find((link: any) => link.rel === 'approve')?.href;
-      console.log('URL de aprovação:', approvalUrl);
-      
-      if (approvalUrl) {
-        window.location.href = approvalUrl;
+      // Handle new response structure
+      if (data?.success && data?.data?.approval_url) {
+        console.log('URL de aprovação:', data.data.approval_url);
+        toast({
+          title: "Redirecionando para PayPal",
+          description: "Você será redirecionado para concluir o pagamento.",
+        });
+        window.location.href = data.data.approval_url;
+      } else if (data?.error) {
+        throw new Error(data.error);
       } else {
-        throw new Error('URL de aprovação PayPal não encontrada');
+        throw new Error('URL de aprovação PayPal não encontrada na resposta');
       }
       
     } catch (error: any) {

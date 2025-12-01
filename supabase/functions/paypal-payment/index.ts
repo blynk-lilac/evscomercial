@@ -6,7 +6,10 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Exchange rates (update these regularly or use an API)
+// PayPal Sandbox base URL
+const PAYPAL_BASE_URL = 'https://api-m.sandbox.paypal.com';
+
+// Exchange rates
 const EXCHANGE_RATES = {
   USD_TO_BRL: 5.20,
   USD_TO_AOA: 825.50,
@@ -17,7 +20,6 @@ const EXCHANGE_RATES = {
 function convertCurrency(amount: number, fromCurrency: string, toCurrency: string): number {
   if (fromCurrency === toCurrency) return amount;
   
-  // Convert to USD first, then to target currency
   let usdAmount = amount;
   if (fromCurrency === 'BRL') usdAmount = amount * EXCHANGE_RATES.BRL_TO_USD;
   if (fromCurrency === 'AOA') usdAmount = amount * EXCHANGE_RATES.AOA_TO_USD;
@@ -31,10 +33,11 @@ function convertCurrency(amount: number, fromCurrency: string, toCurrency: strin
 
 async function getPayPalAccessToken(clientId: string, secretKey: string): Promise<string> {
   const auth = btoa(`${clientId}:${secretKey}`);
-  const paypalUrl = 'https://api-m.sandbox.paypal.com/v1/oauth2/token';
   
   console.log('Requesting PayPal access token...');
-  const response = await fetch(paypalUrl, {
+  console.log('Client ID starts with:', clientId.substring(0, 10));
+  
+  const response = await fetch(`${PAYPAL_BASE_URL}/v1/oauth2/token`, {
     method: 'POST',
     headers: {
       'Authorization': `Basic ${auth}`,
@@ -46,12 +49,97 @@ async function getPayPalAccessToken(clientId: string, secretKey: string): Promis
   const data = await response.json();
   
   if (!response.ok) {
-    console.error('PayPal auth error:', data);
-    throw new Error(`PayPal authentication failed: ${data.error_description || data.error}`);
+    console.error('PayPal auth error:', JSON.stringify(data));
+    throw new Error(`Falha na autenticação PayPal: ${data.error_description || data.error || 'Erro desconhecido'}`);
   }
   
   console.log('PayPal access token obtained successfully');
   return data.access_token;
+}
+
+async function createPayPalOrder(accessToken: string, amount: string, returnUrl: string, cancelUrl: string, description: string): Promise<any> {
+  console.log(`Creating PayPal order for ${amount} USD`);
+  
+  const orderPayload = {
+    intent: 'CAPTURE',
+    purchase_units: [{
+      amount: {
+        currency_code: 'USD',
+        value: amount,
+      },
+      description: description,
+    }],
+    application_context: {
+      return_url: returnUrl,
+      cancel_url: cancelUrl,
+      brand_name: 'EVS Comercial',
+      user_action: 'PAY_NOW',
+      shipping_preference: 'NO_SHIPPING',
+    }
+  };
+
+  console.log('Order payload:', JSON.stringify(orderPayload));
+
+  const response = await fetch(`${PAYPAL_BASE_URL}/v2/checkout/orders`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(orderPayload),
+  });
+  
+  const result = await response.json();
+  
+  if (!response.ok) {
+    console.error('PayPal order creation error:', JSON.stringify(result));
+    throw new Error(`Falha ao criar pedido PayPal: ${result.message || result.error || JSON.stringify(result.details) || 'Erro desconhecido'}`);
+  }
+  
+  console.log('PayPal order created successfully:', result.id);
+  return result;
+}
+
+async function createPayPalPayout(accessToken: string, amount: string, recipientEmail: string, note: string): Promise<any> {
+  console.log(`Creating PayPal payout of ${amount} USD to ${recipientEmail}`);
+  
+  const payoutPayload = {
+    sender_batch_header: {
+      sender_batch_id: `EVS_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      email_subject: 'EVS Comercial - Pagamento',
+      email_message: note,
+    },
+    items: [{
+      recipient_type: 'EMAIL',
+      amount: {
+        value: amount,
+        currency: 'USD',
+      },
+      receiver: recipientEmail,
+      note: note,
+    }],
+  };
+
+  console.log('Payout payload:', JSON.stringify(payoutPayload));
+
+  const response = await fetch(`${PAYPAL_BASE_URL}/v1/payments/payouts`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payoutPayload),
+  });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    console.error('PayPal payout error:', JSON.stringify(result));
+    throw new Error(`Falha no payout PayPal: ${result.message || result.error || JSON.stringify(result.details) || 'Erro desconhecido'}`);
+  }
+
+  console.log('PayPal payout created successfully:', result.batch_header?.payout_batch_id);
+  return result;
 }
 
 serve(async (req) => {
@@ -64,134 +152,129 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const authHeader = req.headers.get('Authorization')!;
+    // Get user from auth header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      throw new Error('Token de autorização não fornecido');
+    }
+    
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
 
     if (userError || !user) {
-      throw new Error('Unauthorized');
+      console.error('Auth error:', userError);
+      throw new Error('Usuário não autenticado');
     }
 
-    const { action, amount, currency, recipient_email } = await req.json();
+    console.log('User authenticated:', user.id);
 
-    const clientId = Deno.env.get('PAYPAL_CLIENT_ID')!;
-    const secretKey = Deno.env.get('PAYPAL_SECRET_KEY')!;
+    const body = await req.json();
+    const { action, amount, currency, recipient_email, order_id } = body;
+
+    console.log('Request body:', JSON.stringify({ action, amount, currency, recipient_email }));
+
+    const clientId = Deno.env.get('PAYPAL_CLIENT_ID');
+    const secretKey = Deno.env.get('PAYPAL_SECRET_KEY');
+    
+    if (!clientId || !secretKey) {
+      console.error('PayPal credentials not configured');
+      throw new Error('Credenciais PayPal não configuradas');
+    }
+
     const accessToken = await getPayPalAccessToken(clientId, secretKey);
+    
+    // Get origin for redirect URLs
+    const origin = req.headers.get('origin') || 'https://evs-comercial.lovable.app';
+    console.log('Origin for redirects:', origin);
 
-    let result;
+    let result: any = {};
 
     switch (action) {
-      case 'checkout':
-        // Process checkout payment - customer pays, money goes to merchant
+      case 'checkout': {
         const usdAmount = convertCurrency(amount, currency, 'USD').toFixed(2);
-        console.log(`Creating checkout order for ${usdAmount} USD (${amount} ${currency})`);
+        console.log(`Checkout: ${amount} ${currency} = ${usdAmount} USD`);
         
-        const checkoutResponse = await fetch('https://api-m.sandbox.paypal.com/v2/checkout/orders', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            intent: 'CAPTURE',
-            purchase_units: [{
-              amount: {
-                currency_code: 'USD',
-                value: usdAmount,
-              },
-              payee: {
-                email_address: 'isaacmuaco582@gmail.com'
-              }
-            }],
-            application_context: {
-              return_url: `${req.headers.get('origin')}/payment-success`,
-              cancel_url: `${req.headers.get('origin')}/cart`,
-              brand_name: 'EVS Comercial',
-              user_action: 'PAY_NOW'
-            }
-          }),
-        });
+        const order = await createPayPalOrder(
+          accessToken,
+          usdAmount,
+          `${origin}/payment-success`,
+          `${origin}/cart`,
+          'Compra EVS Comercial'
+        );
         
-        result = await checkoutResponse.json();
-        
-        if (!checkoutResponse.ok) {
-          console.error('PayPal checkout error:', result);
-          throw new Error(`PayPal checkout failed: ${result.message || 'Unknown error'}`);
-        }
-        
-        console.log('PayPal order created:', result.id);
-        
-        // Find approval URL
-        const approvalUrl = result.links?.find((link: any) => link.rel === 'approve')?.href;
+        const approvalUrl = order.links?.find((link: any) => link.rel === 'approve')?.href;
         if (!approvalUrl) {
-          console.error('No approval URL in PayPal response:', result);
+          console.error('No approval URL in response:', JSON.stringify(order));
           throw new Error('URL de aprovação não encontrada na resposta do PayPal');
         }
         
-        console.log('Approval URL:', approvalUrl);
-        
-        // Create transaction record for checkout
         await supabase.from('transactions').insert({
           user_id: user.id,
           type: 'checkout',
           amount,
           currency,
           status: 'pending',
-          paypal_transaction_id: result.id,
-          description: 'Pagamento de compra no carrinho',
+          paypal_transaction_id: order.id,
+          description: 'Pagamento de compra',
         });
         
-        // Return result with approval URL
-        result.approval_url = approvalUrl;
+        result = {
+          order_id: order.id,
+          approval_url: approvalUrl,
+          status: order.status,
+        };
         break;
+      }
 
-      case 'deposit':
-        // Create PayPal order for deposit
-        const orderResponse = await fetch('https://api-m.sandbox.paypal.com/v2/checkout/orders', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            intent: 'CAPTURE',
-            purchase_units: [{
-              amount: {
-                currency_code: 'USD',
-                value: convertCurrency(amount, currency, 'USD').toFixed(2),
-              },
-            }],
-          }),
-        });
+      case 'deposit': {
+        const usdAmount = convertCurrency(amount, currency, 'USD').toFixed(2);
+        console.log(`Deposit: ${amount} ${currency} = ${usdAmount} USD`);
         
-        result = await orderResponse.json();
+        const order = await createPayPalOrder(
+          accessToken,
+          usdAmount,
+          `${origin}/dashboard?deposit_success=true&amount=${amount}&currency=${currency}`,
+          `${origin}/dashboard?deposit_cancelled=true`,
+          'Depósito na Carteira EVS'
+        );
         
-        // Create transaction record
+        const approvalUrl = order.links?.find((link: any) => link.rel === 'approve')?.href;
+        if (!approvalUrl) {
+          console.error('No approval URL in response:', JSON.stringify(order));
+          throw new Error('URL de aprovação não encontrada na resposta do PayPal');
+        }
+        
         await supabase.from('transactions').insert({
           user_id: user.id,
           type: 'deposit',
           amount,
           currency,
           status: 'pending',
-          paypal_transaction_id: result.id,
+          paypal_transaction_id: order.id,
           description: 'Depósito via PayPal',
         });
+        
+        result = {
+          order_id: order.id,
+          approval_url: approvalUrl,
+          status: order.status,
+        };
         break;
+      }
 
-      case 'withdrawal':
-        // Validate withdrawal amount (100-200)
+      case 'withdrawal': {
         if (amount < 100 || amount > 200) {
           throw new Error('O valor de levantamento deve ser entre 100 e 200');
         }
 
-        // Check user balance before withdrawal
-        const { data: userWallet } = await supabase
+        const { data: userWallet, error: walletError } = await supabase
           .from('wallets')
           .select('*')
           .eq('user_id', user.id)
           .single();
 
-        if (!userWallet) {
+        if (walletError || !userWallet) {
+          console.error('Wallet error:', walletError);
           throw new Error('Carteira não encontrada');
         }
 
@@ -199,131 +282,82 @@ serve(async (req) => {
         const currentBalance = userWallet[balanceKey] || 0;
 
         if (currentBalance < amount) {
-          throw new Error('Saldo insuficiente para levantamento');
+          throw new Error(`Saldo insuficiente. Saldo atual: ${currentBalance} ${currency}`);
         }
 
-        // Create PayPal payout for withdrawal
-        const amountInUSD = convertCurrency(amount, currency, 'USD');
-        
-        const payoutResponse = await fetch('https://api-m.sandbox.paypal.com/v1/payments/payouts', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            sender_batch_header: {
-              sender_batch_id: `batch_${Date.now()}`,
-              email_subject: 'Levantamento EVS Comercial',
-              email_message: 'Seu levantamento foi processado.',
-            },
-            items: [{
-              recipient_type: 'EMAIL',
-              amount: {
-                value: amountInUSD.toFixed(2),
-                currency: 'USD',
-              },
-              receiver: recipient_email || 'isaacmuaco582@gmail.com',
-              note: 'Levantamento da sua carteira EVS',
-            }],
-          }),
-        });
+        const usdAmount = convertCurrency(amount, currency, 'USD').toFixed(2);
+        console.log(`Withdrawal: ${amount} ${currency} = ${usdAmount} USD`);
 
-        result = await payoutResponse.json();
+        const payout = await createPayPalPayout(
+          accessToken,
+          usdAmount,
+          recipient_email || user.email || 'isaacmuaco582@gmail.com',
+          'Levantamento da carteira EVS'
+        );
 
-        // Update wallet balance
-        const { data: wallet } = await supabase
+        const newBalance = currentBalance - amount;
+        await supabase
           .from('wallets')
-          .select('*')
-          .eq('user_id', user.id)
-          .single();
+          .update({ [balanceKey]: newBalance })
+          .eq('user_id', user.id);
 
-        if (wallet) {
-          const balanceKey = `balance_${currency.toLowerCase()}`;
-          await supabase
-            .from('wallets')
-            .update({
-              [balanceKey]: (wallet[balanceKey] || 0) - amount,
-            })
-            .eq('user_id', user.id);
-        }
-
-        // Create transaction record
         await supabase.from('transactions').insert({
           user_id: user.id,
           type: 'withdrawal',
           amount,
           currency,
           status: 'completed',
-          paypal_transaction_id: result.batch_header?.payout_batch_id,
-          recipient_email: recipient_email || 'isaacmuaco582@gmail.com',
+          paypal_transaction_id: payout.batch_header?.payout_batch_id,
+          recipient_email: recipient_email || user.email,
           description: 'Levantamento para PayPal',
         });
-        break;
 
-      case 'transfer':
-        // Check user balance before transfer
-        const { data: senderWallet } = await supabase
+        result = {
+          payout_batch_id: payout.batch_header?.payout_batch_id,
+          status: 'completed',
+          new_balance: newBalance,
+        };
+        break;
+      }
+
+      case 'transfer': {
+        if (!recipient_email) {
+          throw new Error('Email do destinatário é obrigatório');
+        }
+
+        const { data: senderWallet, error: walletError } = await supabase
           .from('wallets')
           .select('*')
           .eq('user_id', user.id)
           .single();
 
-        if (!senderWallet) {
+        if (walletError || !senderWallet) {
+          console.error('Wallet error:', walletError);
           throw new Error('Carteira não encontrada');
         }
 
-        const senderBalanceKey = `balance_${currency.toLowerCase()}`;
-        const senderBalance = senderWallet[senderBalanceKey] || 0;
+        const balanceKey = `balance_${currency.toLowerCase()}`;
+        const currentBalance = senderWallet[balanceKey] || 0;
 
-        if (senderBalance < amount) {
-          throw new Error('Saldo insuficiente para transferência');
+        if (currentBalance < amount) {
+          throw new Error(`Saldo insuficiente. Saldo atual: ${currentBalance} ${currency}`);
         }
 
-        // Bank transfer via PayPal
-        const transferAmountUSD = convertCurrency(amount, currency, 'USD');
-        
-        const transferResponse = await fetch('https://api-m.sandbox.paypal.com/v1/payments/payouts', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            sender_batch_header: {
-              sender_batch_id: `transfer_${Date.now()}`,
-              email_subject: 'Transferência EVS Comercial',
-            },
-            items: [{
-              recipient_type: 'EMAIL',
-              amount: {
-                value: transferAmountUSD.toFixed(2),
-                currency: 'USD',
-              },
-              receiver: recipient_email,
-              note: 'Transferência bancária via EVS',
-            }],
-          }),
-        });
+        const usdAmount = convertCurrency(amount, currency, 'USD').toFixed(2);
+        console.log(`Transfer: ${amount} ${currency} = ${usdAmount} USD to ${recipient_email}`);
 
-        result = await transferResponse.json();
+        const payout = await createPayPalPayout(
+          accessToken,
+          usdAmount,
+          recipient_email,
+          `Transferência de ${user.email} via EVS`
+        );
 
-        // Update wallet and create transaction
-        const { data: transferWallet } = await supabase
+        const newBalance = currentBalance - amount;
+        await supabase
           .from('wallets')
-          .select('*')
-          .eq('user_id', user.id)
-          .single();
-
-        if (transferWallet) {
-          const transferBalanceKey = `balance_${currency.toLowerCase()}`;
-          await supabase
-            .from('wallets')
-            .update({
-              [transferBalanceKey]: (transferWallet[transferBalanceKey] || 0) - amount,
-            })
-            .eq('user_id', user.id);
-        }
+          .update({ [balanceKey]: newBalance })
+          .eq('user_id', user.id);
 
         await supabase.from('transactions').insert({
           user_id: user.id,
@@ -331,23 +365,92 @@ serve(async (req) => {
           amount,
           currency,
           status: 'completed',
-          paypal_transaction_id: result.batch_header?.payout_batch_id,
+          paypal_transaction_id: payout.batch_header?.payout_batch_id,
           recipient_email,
           description: `Transferência para ${recipient_email}`,
         });
+
+        result = {
+          payout_batch_id: payout.batch_header?.payout_batch_id,
+          status: 'completed',
+          new_balance: newBalance,
+        };
         break;
+      }
+
+      case 'capture': {
+        if (!order_id) {
+          throw new Error('Order ID é obrigatório para captura');
+        }
+
+        console.log(`Capturing order: ${order_id}`);
+
+        const captureResponse = await fetch(`${PAYPAL_BASE_URL}/v2/checkout/orders/${order_id}/capture`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        const captureResult = await captureResponse.json();
+
+        if (!captureResponse.ok) {
+          console.error('Capture error:', JSON.stringify(captureResult));
+          throw new Error(`Falha na captura: ${captureResult.message || 'Erro desconhecido'}`);
+        }
+
+        await supabase
+          .from('transactions')
+          .update({ status: 'completed' })
+          .eq('paypal_transaction_id', order_id);
+
+        const { data: transaction } = await supabase
+          .from('transactions')
+          .select('*')
+          .eq('paypal_transaction_id', order_id)
+          .single();
+
+        if (transaction && transaction.type === 'deposit') {
+          const balanceKey = `balance_${transaction.currency.toLowerCase()}`;
+          
+          const { data: currentWallet } = await supabase
+            .from('wallets')
+            .select('*')
+            .eq('user_id', user.id)
+            .single();
+
+          if (currentWallet) {
+            const newBalance = (currentWallet[balanceKey] || 0) + transaction.amount;
+            await supabase
+              .from('wallets')
+              .update({ [balanceKey]: newBalance })
+              .eq('user_id', user.id);
+          }
+        }
+
+        result = {
+          status: 'captured',
+          capture_id: captureResult.id,
+        };
+        break;
+      }
 
       default:
-        throw new Error('Invalid action');
+        throw new Error(`Ação inválida: ${action}`);
     }
+
+    console.log('Success result:', JSON.stringify(result));
 
     return new Response(JSON.stringify({ success: true, data: result }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return new Response(JSON.stringify({ error: errorMessage }), {
+    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+    console.error('Edge function error:', errorMessage);
+    
+    return new Response(JSON.stringify({ success: false, error: errorMessage }), {
       status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
