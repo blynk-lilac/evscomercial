@@ -62,6 +62,7 @@ export const ChatBot = () => {
     setIsLoading(true);
 
     try {
+      console.log('Sending message to evs-chat...');
       const { data, error } = await supabase.functions.invoke('evs-chat', {
         body: { 
           messages: [...messages, userMessage].map(m => ({
@@ -71,13 +72,22 @@ export const ChatBot = () => {
         }
       });
 
-      if (error) throw error;
+      console.log('evs-chat response:', { data, error });
 
-      let assistantContent = data.choices[0]?.message?.content || 'Desculpe, não consegui processar sua mensagem.';
+      if (error) {
+        console.error('evs-chat error:', error);
+        throw new Error(error.message || 'Erro ao conectar com o assistente');
+      }
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      let assistantContent = data?.choices?.[0]?.message?.content || 'Desculpe, não consegui processar sua mensagem. Tente novamente.';
       
       // Check if AI wants to generate coupon
       if (assistantContent.includes('[GENERATE_COUPON]')) {
-        assistantContent = assistantContent.replace('[GENERATE_COUPON]', '');
+        assistantContent = assistantContent.replace('[GENERATE_COUPON]', '').trim();
         
         // Try to generate coupon
         const { data: { session } } = await supabase.auth.getSession();
@@ -85,15 +95,21 @@ export const ChatBot = () => {
         if (!session) {
           setMessages(prev => [...prev, {
             role: 'assistant',
-            content: assistantContent + '\n\n❌ Você precisa estar logado para gerar um cupom. Por favor, faça login primeiro!'
+            content: '🎁 Para gerar seu cupom de desconto, você precisa estar logado!\n\n👉 Por favor, faça login primeiro e depois volte aqui para pedir seu cupom.'
           }]);
           setIsLoading(false);
           return;
         }
 
+        // Add loading message
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: '✨ Gerando seu cupom exclusivo de 6% de desconto...'
+        }]);
+
         // Generate coupon
         try {
-          console.log('Generating coupon with token:', session.access_token.substring(0, 20) + '...');
+          console.log('Generating coupon...');
           
           const { data: couponData, error: couponError } = await supabase.functions.invoke('generate-coupon', {
             headers: {
@@ -101,36 +117,40 @@ export const ChatBot = () => {
             }
           });
 
-          console.log('Coupon response:', couponData, couponError);
+          console.log('Coupon response:', { couponData, couponError });
+
+          // Remove loading message
+          setMessages(prev => prev.slice(0, -1));
 
           if (couponError) {
             console.error('Coupon function error:', couponError);
             setMessages(prev => [...prev, {
               role: 'assistant',
-              content: assistantContent + '\n\n❌ Erro ao gerar cupom: ' + (couponError.message || 'Tente novamente mais tarde.')
+              content: '❌ Erro ao gerar cupom: ' + (couponError.message || 'Tente novamente mais tarde.')
             }]);
           } else if (couponData?.error) {
             setMessages(prev => [...prev, {
               role: 'assistant',
-              content: assistantContent + '\n\n❌ ' + couponData.error
+              content: '⚠️ ' + couponData.error
             }]);
           } else if (couponData?.coupon) {
             setMessages(prev => [...prev, {
               role: 'assistant',
-              content: '🎉 Seu cupom foi gerado com sucesso!\n\n💰 Desconto: 6%\n⏰ Válido por 30 dias\n\n📋 Copie o código abaixo e use no carrinho:',
+              content: `🎉 ${couponData.message || 'Seu cupom foi gerado com sucesso!'}\n\n💰 Desconto: 6%\n⏰ Válido por 30 dias\n\n📋 Copie o código abaixo e use no carrinho:`,
               couponCode: couponData.coupon
             }]);
           } else {
             setMessages(prev => [...prev, {
               role: 'assistant',
-              content: assistantContent + '\n\n❌ Resposta inesperada do servidor. Tente novamente.'
+              content: '❌ Resposta inesperada. Por favor, tente novamente.'
             }]);
           }
         } catch (err) {
           console.error('Coupon generation error:', err);
+          setMessages(prev => prev.slice(0, -1)); // Remove loading
           setMessages(prev => [...prev, {
             role: 'assistant',
-            content: assistantContent + '\n\n❌ Erro de conexão ao gerar cupom. Tente novamente.'
+            content: '❌ Erro de conexão ao gerar cupom. Tente novamente.'
           }]);
         }
         setIsLoading(false);
@@ -143,11 +163,11 @@ export const ChatBot = () => {
       };
 
       setMessages(prev => [...prev, assistantMessage]);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro no chat:', error);
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: 'Desculpe, ocorreu um erro. Por favor, tente novamente.'
+        content: '❌ ' + (error.message || 'Desculpe, ocorreu um erro. Por favor, tente novamente.')
       }]);
     } finally {
       setIsLoading(false);

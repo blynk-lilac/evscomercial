@@ -12,11 +12,26 @@ serve(async (req) => {
 
   try {
     const { messages } = await req.json()
+    console.log('Received messages:', JSON.stringify(messages))
 
+    const apiKey = Deno.env.get('LOVABLE_API_KEY')
+    if (!apiKey) {
+      console.error('LOVABLE_API_KEY not configured')
+      return new Response(
+        JSON.stringify({ error: 'API key não configurada' }),
+        { 
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+
+    console.log('Calling Lovable AI gateway...')
+    
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${Deno.env.get('LOVABLE_API_KEY')}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -61,9 +76,9 @@ CUPONS DE DESCONTO:
   Se você JÁ está logado, digite: GERAR CUPOM
   Se você NÃO está logado, por favor faça login primeiro em: Login/Cadastro"
   
-- Se o usuário digitar "GERAR CUPOM" ou similares, responda:
+- Se o usuário digitar "GERAR CUPOM" ou similares (gerar cupom, quero cupom, me dá cupom), responda:
   "✨ Gerando seu cupom exclusivo de 6% de desconto... Por favor, aguarde!"
-  E retorne EXATAMENTE esta palavra mágica: [GENERATE_COUPON]
+  E INCLUA OBRIGATORIAMENTE esta tag: [GENERATE_COUPON]
   
 - Os cupons são únicos por usuário e só funcionam uma vez
 - Desconto fixo de 6% em todas as compras
@@ -82,12 +97,47 @@ Se alguém perguntar sobre temas não relacionados à EVS Fashion, responda educ
           },
           ...messages
         ],
-        temperature: 0.8,
         max_tokens: 500,
       }),
     })
 
+    console.log('Lovable AI response status:', response.status)
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('Lovable AI error:', errorText)
+      
+      if (response.status === 429) {
+        return new Response(
+          JSON.stringify({ error: 'Limite de requisições excedido. Tente novamente em alguns segundos.' }),
+          { 
+            status: 429,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        )
+      }
+      
+      if (response.status === 402) {
+        return new Response(
+          JSON.stringify({ error: 'Créditos de IA esgotados. Entre em contato com o suporte.' }),
+          { 
+            status: 402,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        )
+      }
+      
+      return new Response(
+        JSON.stringify({ error: 'Erro na API de IA. Tente novamente.' }),
+        { 
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+
     const data = await response.json()
+    console.log('Lovable AI response:', JSON.stringify(data))
     
     return new Response(
       JSON.stringify(data),
