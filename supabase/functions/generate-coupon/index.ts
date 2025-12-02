@@ -11,9 +11,14 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders })
   }
 
+  console.log('Generate coupon request received')
+
   try {
     const authHeader = req.headers.get('Authorization')
+    console.log('Auth header present:', !!authHeader)
+    
     if (!authHeader) {
+      console.error('No authorization header')
       return new Response(
         JSON.stringify({ error: 'Não autorizado. Faça login para gerar cupom.' }),
         { 
@@ -26,13 +31,19 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     
+    console.log('Supabase URL:', supabaseUrl ? 'configured' : 'missing')
+    console.log('Service key:', supabaseServiceKey ? 'configured' : 'missing')
+    
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
     // Verify user authentication
     const token = authHeader.replace('Bearer ', '')
+    console.log('Verifying token...')
+    
     const { data: { user }, error: authError } = await supabase.auth.getUser(token)
     
-    if (authError || !user) {
+    if (authError) {
+      console.error('Auth error:', authError)
       return new Response(
         JSON.stringify({ error: 'Sessão inválida. Por favor, faça login novamente.' }),
         { 
@@ -41,9 +52,24 @@ serve(async (req) => {
         }
       )
     }
+    
+    if (!user) {
+      console.error('No user found')
+      return new Response(
+        JSON.stringify({ error: 'Usuário não encontrado. Faça login novamente.' }),
+        { 
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+
+    console.log('User verified:', user.id)
 
     // Check recent discount requests (within last 24 hours)
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+    console.log('Checking recent requests since:', oneDayAgo)
+    
     const { data: recentRequests, error: requestError } = await supabase
       .from('discount_requests')
       .select('*')
@@ -54,6 +80,8 @@ serve(async (req) => {
     if (requestError) {
       console.error('Error checking recent requests:', requestError)
     }
+
+    console.log('Recent requests found:', recentRequests?.length || 0)
 
     if (recentRequests && recentRequests.length > 0) {
       return new Response(
@@ -68,7 +96,8 @@ serve(async (req) => {
       )
     }
 
-    // Check if user already has an active coupon
+    // Check if user already has an active unused coupon
+    console.log('Checking existing active coupons...')
     const { data: existingCoupons, error: checkError } = await supabase
       .from('coupons')
       .select('*')
@@ -80,20 +109,26 @@ serve(async (req) => {
       console.error('Error checking existing coupons:', checkError)
     }
 
+    console.log('Existing active coupons:', existingCoupons?.length || 0)
+
     if (existingCoupons && existingCoupons.length > 0) {
+      // Return existing coupon instead of error
+      console.log('Returning existing coupon:', existingCoupons[0].code)
       return new Response(
         JSON.stringify({ 
-          error: 'Você já possui um cupom ativo. Use-o antes de solicitar outro.',
-          coupon: existingCoupons[0].code
+          success: true,
+          coupon: existingCoupons[0].code,
+          discount: 6,
+          message: 'Você já possui um cupom ativo! Use o código acima.'
         }),
         { 
-          status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       )
     }
 
     // Generate new coupon with 6% discount and single use
+    console.log('Creating new coupon...')
     const { data: newCoupon, error: insertError } = await supabase
       .from('coupons')
       .insert({
@@ -118,13 +153,21 @@ serve(async (req) => {
       )
     }
 
+    console.log('New coupon created:', newCoupon.code)
+
     // Log discount request
-    await supabase
+    const { error: logError } = await supabase
       .from('discount_requests')
       .insert({
         user_id: user.id,
         was_granted: true
       })
+
+    if (logError) {
+      console.error('Error logging discount request:', logError)
+    }
+
+    console.log('Coupon generated successfully!')
 
     return new Response(
       JSON.stringify({ 
@@ -138,7 +181,7 @@ serve(async (req) => {
       }
     )
   } catch (error) {
-    console.error('Error:', error)
+    console.error('Unexpected error:', error)
     return new Response(
       JSON.stringify({ error: (error as Error).message }),
       { 
