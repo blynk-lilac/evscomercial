@@ -125,21 +125,36 @@ const ProductDetail = () => {
       return;
     }
 
+    if (!id) {
+      toast({
+        title: "Erro",
+        description: "Produto não encontrado.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setSubmitting(true);
 
-    const { error } = await supabase
+    console.log('Submitting review:', { product_id: id, user_id: user.id, rating, comment: comment.trim() });
+
+    const { data, error } = await supabase
       .from('reviews')
       .insert({
         product_id: id,
         user_id: user.id,
         rating,
         comment: comment.trim(),
-      });
+      })
+      .select();
+
+    console.log('Review response:', { data, error });
 
     if (error) {
+      console.error('Review error:', error);
       toast({
-        title: "Erro",
-        description: "Não foi possível enviar sua avaliação.",
+        title: "Erro ao enviar avaliação",
+        description: error.message || "Não foi possível enviar sua avaliação.",
         variant: "destructive",
       });
     } else {
@@ -149,7 +164,6 @@ const ProductDetail = () => {
       });
       setComment("");
       setRating(5);
-      // Recarregar reviews aprovadas
       loadReviews();
     }
 
