@@ -75,22 +75,45 @@ export const ChatBot = () => {
         }
 
         // Generate coupon
-        const { data: couponData, error: couponError } = await supabase.functions.invoke('generate-coupon', {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`
-          }
-        });
+        try {
+          console.log('Generating coupon with token:', session.access_token.substring(0, 20) + '...');
+          
+          const { data: couponData, error: couponError } = await supabase.functions.invoke('generate-coupon', {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`
+            }
+          });
 
-        if (couponError || couponData.error) {
+          console.log('Coupon response:', couponData, couponError);
+
+          if (couponError) {
+            console.error('Coupon function error:', couponError);
+            setMessages(prev => [...prev, {
+              role: 'assistant',
+              content: assistantContent + '\n\n❌ Erro ao gerar cupom: ' + (couponError.message || 'Tente novamente mais tarde.')
+            }]);
+          } else if (couponData?.error) {
+            setMessages(prev => [...prev, {
+              role: 'assistant',
+              content: assistantContent + '\n\n❌ ' + couponData.error
+            }]);
+          } else if (couponData?.coupon) {
+            setMessages(prev => [...prev, {
+              role: 'assistant',
+              content: '🎉 Seu cupom foi gerado com sucesso!\n\n💰 Desconto: 6%\n⏰ Válido por 30 dias\n\n📋 Copie o código abaixo e use no carrinho:',
+              couponCode: couponData.coupon
+            }]);
+          } else {
+            setMessages(prev => [...prev, {
+              role: 'assistant',
+              content: assistantContent + '\n\n❌ Resposta inesperada do servidor. Tente novamente.'
+            }]);
+          }
+        } catch (err) {
+          console.error('Coupon generation error:', err);
           setMessages(prev => [...prev, {
             role: 'assistant',
-            content: assistantContent + '\n\n❌ ' + (couponData?.error || 'Erro ao gerar cupom. Tente novamente mais tarde.')
-          }]);
-        } else {
-          setMessages(prev => [...prev, {
-            role: 'assistant',
-            content: '🎉 Seu cupom foi gerado com sucesso!\n\n💰 Desconto: 6%\n⏰ Válido por 30 dias\n\n📋 Use o código abaixo no carrinho de compras:',
-            couponCode: couponData.coupon
+            content: assistantContent + '\n\n❌ Erro de conexão ao gerar cupom. Tente novamente.'
           }]);
         }
         setIsLoading(false);
@@ -208,24 +231,29 @@ export const ChatBot = () => {
                         
                         {/* Coupon Code Display */}
                         {message.couponCode && (
-                          <div className="mt-3 flex gap-2">
-                            <Input
-                              value={message.couponCode}
-                              readOnly
-                              className="flex-1 font-mono text-xs bg-background"
-                            />
-                            <Button
-                              size="icon"
-                              variant="outline"
-                              onClick={() => handleCopyCoupon(message.couponCode!)}
-                              className="flex-shrink-0"
-                            >
-                              {copiedCode === message.couponCode ? (
-                                <Check className="h-4 w-4 text-green-500" />
-                              ) : (
-                                <Copy className="h-4 w-4" />
-                              )}
-                            </Button>
+                          <div className="mt-4 p-3 bg-green-500/20 rounded-lg border border-green-500/30">
+                            <p className="text-xs text-green-600 dark:text-green-400 mb-2 font-medium">
+                              Seu código de desconto:
+                            </p>
+                            <div className="flex gap-2">
+                              <Input
+                                value={message.couponCode}
+                                readOnly
+                                className="flex-1 font-mono text-xs bg-background text-center font-bold tracking-wider"
+                              />
+                              <Button
+                                size="icon"
+                                variant={copiedCode === message.couponCode ? "default" : "outline"}
+                                onClick={() => handleCopyCoupon(message.couponCode!)}
+                                className="flex-shrink-0 transition-all"
+                              >
+                                {copiedCode === message.couponCode ? (
+                                  <Check className="h-4 w-4 text-green-500" />
+                                ) : (
+                                  <Copy className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </div>
                           </div>
                         )}
                       </div>
