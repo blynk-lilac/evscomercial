@@ -2,8 +2,8 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { MessageCircle, X, Send, Loader2, Copy, Check } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { MessageCircle, X, Send, Copy, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
@@ -14,6 +14,17 @@ interface Message {
   content: string;
   couponCode?: string;
 }
+
+const MessageSkeleton = () => (
+  <div className="flex justify-start items-start gap-2">
+    <Skeleton className="h-8 w-8 rounded-full flex-shrink-0" />
+    <div className="space-y-2 max-w-[75%]">
+      <Skeleton className="h-4 w-48" />
+      <Skeleton className="h-4 w-36" />
+      <Skeleton className="h-4 w-24" />
+    </div>
+  </div>
+);
 
 export const ChatBot = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -26,15 +37,21 @@ export const ChatBot = () => {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  // Auto-scroll to bottom when messages change
+  const scrollToBottom = () => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages]);
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isLoading]);
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -167,17 +184,21 @@ export const ChatBot = () => {
         </Button>
       )}
 
-      {/* Chat Window - Fullscreen on Mobile, Card on Desktop */}
+      {/* Chat Window */}
       {isOpen && (
         <div 
           className={`fixed z-50 animate-scale-in ${
             isMobile 
-              ? 'inset-0 flex flex-col bg-background'
+              ? 'inset-0'
               : 'bottom-6 right-6 w-96 h-[600px]'
           }`}
+          style={isMobile ? { height: '100dvh' } : undefined}
         >
-          <Card className={`flex flex-col shadow-strong ${isMobile ? 'h-full border-0 rounded-none' : 'h-full'}`}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 bg-accent text-accent-foreground rounded-t-lg border-b border-accent-foreground/10">
+          <Card className={`flex flex-col shadow-strong overflow-hidden ${
+            isMobile ? 'h-full border-0 rounded-none' : 'h-full'
+          }`}>
+            {/* Fixed Header */}
+            <CardHeader className="flex-shrink-0 flex flex-row items-center justify-between space-y-0 pb-4 bg-accent text-accent-foreground rounded-t-lg border-b border-accent-foreground/10">
               <div className="flex items-center gap-3">
                 <img 
                   src={evsLogo} 
@@ -202,8 +223,13 @@ export const ChatBot = () => {
               </Button>
             </CardHeader>
 
-            <CardContent className="flex-1 p-0 overflow-hidden">
-              <ScrollArea className="h-full px-4 py-4" ref={scrollRef}>
+            {/* Scrollable Messages Area */}
+            <CardContent className="flex-1 min-h-0 p-0 overflow-hidden">
+              <div 
+                ref={scrollContainerRef}
+                className="h-full overflow-y-auto px-4 py-4 scroll-smooth"
+                style={{ overscrollBehavior: 'contain' }}
+              >
                 <div className="space-y-3">
                   {messages.map((message, index) => (
                     <div
@@ -259,24 +285,18 @@ export const ChatBot = () => {
                       </div>
                     </div>
                   ))}
-                  {isLoading && (
-                    <div className="flex justify-start items-center gap-2">
-                      <img 
-                        src={evsLogo} 
-                        alt="EVS" 
-                        className="h-8 w-8 rounded-full bg-accent p-1 flex-shrink-0"
-                      />
-                      <div className="bg-secondary text-foreground rounded-2xl rounded-bl-sm px-4 py-3 flex items-center gap-2 shadow-sm">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        <span className="text-sm">Digitando...</span>
-                      </div>
-                    </div>
-                  )}
+                  
+                  {/* Loading Skeleton */}
+                  {isLoading && <MessageSkeleton />}
+                  
+                  {/* Scroll anchor */}
+                  <div ref={messagesEndRef} />
                 </div>
-              </ScrollArea>
+              </div>
             </CardContent>
 
-            <CardFooter className="p-4 border-t bg-muted/30">
+            {/* Fixed Footer Input */}
+            <CardFooter className="flex-shrink-0 p-4 border-t bg-muted/30">
               <div className="flex w-full gap-2">
                 <Input
                   placeholder="Digite sua mensagem..."
