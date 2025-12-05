@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { SignUpWizard, SignUpData } from "@/components/auth/SignUpWizard";
 import { PasswordInput } from "@/components/auth/PasswordInput";
-import evsLogo from "@/assets/evs-logo.png";
+import evsLogo from "@/assets/evs-logo-lion.jpg";
 
 const Auth = () => {
   const [searchParams] = useSearchParams();
