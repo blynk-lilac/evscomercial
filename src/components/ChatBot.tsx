@@ -7,7 +7,7 @@ import { MessageCircle, X, Send, Copy, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
-import evsLogo from "@/assets/evs-logo.png";
+import evsLogo from "@/assets/evs-logo-lion.jpg";
 
 interface Message {
   role: 'user' | 'assistant';

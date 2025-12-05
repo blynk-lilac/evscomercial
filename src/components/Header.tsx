@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useCart } from "@/contexts/CartContext";
-import evsLogo from "@/assets/evs-logo.png";
+import evsLogo from "@/assets/evs-logo-lion.jpg";
 
 interface HeaderProps {
   onMenuClick: () => void;
