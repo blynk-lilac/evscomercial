@@ -59,7 +59,7 @@ export const ProductCard = ({
   };
 
   return (
-    <Card className="group overflow-hidden border-border hover:shadow-strong transition-all duration-300 cursor-pointer animate-fade-in hover:-translate-y-1">
+    <Card className="group overflow-hidden border-border/50 hover:border-primary/30 hover:shadow-strong bg-card transition-all duration-500 cursor-pointer animate-fade-in hover:-translate-y-2">
       <div 
         className="relative overflow-hidden aspect-[3/4] bg-secondary"
         onClick={() => navigate(`/product/${id}`)}
@@ -67,76 +67,79 @@ export const ProductCard = ({
         <img
           src={image}
           alt={name}
-          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
         />
+        {/* Overlay gradient on hover */}
+        <div className="absolute inset-0 bg-gradient-to-t from-foreground/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+        
         {category && (
-          <Badge className="absolute top-3 left-3 bg-accent text-accent-foreground shadow-medium">
+          <Badge className="absolute top-3 left-3 bg-primary text-primary-foreground shadow-medium backdrop-blur-sm">
             {category}
           </Badge>
         )}
         {reviewCount > 0 && (
-          <Badge className="absolute bottom-3 left-3 bg-background/90 text-foreground shadow-medium backdrop-blur-sm">
+          <Badge className="absolute bottom-3 left-3 bg-background/95 text-foreground shadow-medium backdrop-blur-md border border-border/50">
             ⭐ {rating.toFixed(1)} ({reviewCount})
           </Badge>
         )}
         <Button
           variant="ghost"
           size="icon"
-          className="absolute top-3 right-3 bg-background/80 hover:bg-background hover:scale-110 transition-all duration-200"
+          className="absolute top-3 right-3 bg-background/90 hover:bg-accent hover:text-accent-foreground hover:scale-110 hover:rotate-12 transition-all duration-300 backdrop-blur-sm"
           onClick={(e) => {
             e.stopPropagation();
             setIsLiked(!isLiked);
           }}
         >
           <Heart
-            className={`h-5 w-5 transition-smooth ${isLiked ? "fill-accent text-accent" : ""}`}
+            className={`h-5 w-5 transition-all duration-300 ${isLiked ? "fill-accent text-accent scale-110" : ""}`}
           />
         </Button>
       </div>
 
-      <CardContent className="p-4 cursor-pointer" onClick={() => navigate(`/product/${id}`)}>
-        <h3 className="font-semibold text-lg mb-2 line-clamp-2 group-hover:text-accent transition-smooth">{name}</h3>
+      <CardContent className="p-5 cursor-pointer" onClick={() => navigate(`/product/${id}`)}>
+        <h3 className="font-semibold text-lg mb-3 line-clamp-2 group-hover:text-primary transition-colors duration-300">{name}</h3>
         
         {reviewCount > 0 ? (
-          <div className="flex items-center gap-2 mb-2">
-            <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="flex items-center gap-0.5">
               {[1, 2, 3, 4, 5].map((star) => (
                 <Star
                   key={star}
-                  className={`h-4 w-4 ${
+                  className={`h-4 w-4 transition-colors ${
                     star <= Math.round(rating)
-                      ? "fill-yellow-500 text-yellow-500"
-                      : "text-muted"
+                      ? "fill-amber-400 text-amber-400"
+                      : "text-muted-foreground/30"
                   }`}
                 />
               ))}
             </div>
             <span className="text-sm text-muted-foreground">
-              ({reviewCount} {reviewCount === 1 ? 'avaliação' : 'avaliações'})
+              ({reviewCount})
             </span>
           </div>
         ) : (
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-sm text-muted-foreground">
-              Seja o primeiro a avaliar!
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-sm text-muted-foreground italic">
+              ✨ Seja o primeiro a avaliar!
             </span>
           </div>
         )}
         
-        <div className="flex items-baseline gap-2 mb-2">
-          <span className="text-2xl font-bold">{currency}</span>
-          <span className="text-2xl font-bold">{price.toFixed(2)}</span>
+        <div className="flex items-baseline gap-1.5 mb-3">
+          <span className="text-sm font-medium text-muted-foreground">{currency}</span>
+          <span className="text-2xl font-bold text-foreground">{price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
         </div>
         
-        <div className="text-sm text-accent font-medium opacity-0 group-hover:opacity-100 transition-smooth">
-          Clique para ver detalhes e avaliar →
+        <div className="text-sm text-primary font-medium opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all duration-300">
+          Ver detalhes →
         </div>
       </CardContent>
 
-      <CardFooter className="p-4 pt-0">
+      <CardFooter className="p-5 pt-0">
         <Button
           onClick={handleAddToCart}
-          className="w-full bg-primary hover:bg-primary/90 transition-smooth gap-2"
+          className="w-full bg-primary hover:bg-primary/90 hover:shadow-colored transition-all duration-300 gap-2 h-11"
         >
           <ShoppingCart className="h-4 w-4" />
           Adicionar ao Carrinho
