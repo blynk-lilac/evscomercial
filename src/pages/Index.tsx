@@ -5,8 +5,26 @@ import { ProductCard } from "@/components/ProductCard";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { getProductImage } from "@/lib/imageMap";
+import { 
+  Sparkles, 
+  Zap, 
+  Shield, 
+  Award, 
+  TrendingUp, 
+  Star,
+  ArrowRight,
+  Instagram,
+  User,
+  Clock,
+  CheckCircle2,
+  Globe,
+  Package,
+  Truck
+} from "lucide-react";
+import { ChatBot } from "@/components/ChatBot";
 
 interface Product {
   id: string;
@@ -58,114 +76,300 @@ const Index = () => {
       <Header onMenuClick={() => setSidebarOpen(true)} />
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      {/* Hero Section */}
-      <section className="pt-24 pb-16 px-4 relative overflow-hidden">
-        {/* Background Effects */}
-        <div className="absolute inset-0 bg-[var(--gradient-hero)]" />
-        <div className="absolute top-20 left-10 w-72 h-72 bg-primary/10 rounded-full blur-3xl animate-float" />
-        <div className="absolute bottom-10 right-10 w-96 h-96 bg-accent/10 rounded-full blur-3xl animate-float" style={{ animationDelay: '-2s' }} />
+      {/* Hero Section - Clean Figma Style */}
+      <section className="pt-20 pb-16 px-4 relative overflow-hidden bg-gradient-to-br from-background via-secondary/20 to-background">
+        {/* Subtle grid pattern */}
+        <div className="absolute inset-0 opacity-[0.015]" style={{ 
+          backgroundImage: 'radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)',
+          backgroundSize: '40px 40px'
+        }} />
         
-        <div className="container mx-auto text-center max-w-4xl relative z-10">
-          {/* Beta Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-6 animate-fade-in">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-            </span>
-            <span className="text-sm font-medium text-primary">Versão Beta • Em Desenvolvimento</span>
+        <div className="container mx-auto max-w-6xl relative z-10">
+          {/* Early Access Banner */}
+          <div className="flex justify-center mb-8 animate-fade-in">
+            <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-primary/5 border border-primary/10">
+              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary/10">
+                <Zap className="h-3 w-3 text-primary" />
+                <span className="text-xs font-semibold text-primary uppercase tracking-wider">Acesso Antecipado</span>
+              </div>
+              <span className="text-sm text-muted-foreground">Versão Beta v0.1.0</span>
+            </div>
           </div>
           
-          <h1 className="font-serif text-5xl md:text-7xl lg:text-8xl font-bold mb-6 tracking-tight animate-scale-in">
-            <span className="bg-gradient-to-r from-foreground via-foreground to-muted-foreground bg-clip-text">
+          <div className="text-center max-w-3xl mx-auto">
+            <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-6 tracking-tight animate-scale-in leading-tight">
               EVS Fashion
-            </span>
-          </h1>
-          
-          <p className="text-xl md:text-2xl lg:text-3xl text-foreground/80 mb-3 animate-fade-in font-medium" style={{ animationDelay: '0.1s' }}>
-            Mais Que Moda, É Identidade.
-          </p>
-          
-          <p className="text-lg text-muted-foreground mb-10 animate-fade-in" style={{ animationDelay: '0.2s' }}>
-            ✨ Melhor Tendência 2026 • Melhor Qualidade 2026 ✨
-          </p>
-          
-          <div className="flex flex-wrap items-center justify-center gap-3 animate-fade-in" style={{ animationDelay: '0.3s' }}>
-            <span className="px-5 py-2.5 bg-card border border-border rounded-full hover:shadow-medium hover:-translate-y-0.5 transition-all duration-300 text-sm font-medium">
-              CEO: Hélio Evaristo
-            </span>
-            <span className="px-5 py-2.5 bg-primary text-primary-foreground rounded-full hover:shadow-colored hover:-translate-y-0.5 transition-all duration-300 text-sm font-medium">
-              @evs_oficial
-            </span>
+            </h1>
+            
+            <p className="text-lg sm:text-xl md:text-2xl text-muted-foreground mb-4 animate-fade-in" style={{ animationDelay: '0.1s' }}>
+              Mais Que Moda, É Identidade.
+            </p>
+            
+            <div className="flex items-center justify-center gap-4 text-sm text-muted-foreground mb-8 animate-fade-in" style={{ animationDelay: '0.15s' }}>
+              <div className="flex items-center gap-1.5">
+                <Award className="h-4 w-4 text-primary" />
+                <span>Tendência 2026</span>
+              </div>
+              <div className="h-1 w-1 rounded-full bg-border" />
+              <div className="flex items-center gap-1.5">
+                <Star className="h-4 w-4 text-primary" />
+                <span>Qualidade Premium</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 animate-fade-in" style={{ animationDelay: '0.2s' }}>
+              <Button size="lg" className="gap-2 px-6 h-12 text-base">
+                <Package className="h-4 w-4" />
+                Ver Coleção
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="lg" className="gap-2 px-6 h-12 text-base">
+                <User className="h-4 w-4" />
+                CEO: Hélio Evaristo
+              </Button>
+            </div>
+          </div>
+
+          {/* Stats Row */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-16 animate-fade-in" style={{ animationDelay: '0.3s' }}>
+            {[
+              { icon: Package, label: "Produtos", value: products.length.toString() },
+              { icon: Globe, label: "Regiões", value: "2" },
+              { icon: Truck, label: "Entregas", value: "Rápidas" },
+              { icon: Shield, label: "Garantia", value: "100%" },
+            ].map((stat, i) => (
+              <div key={i} className="flex flex-col items-center p-4 rounded-2xl bg-card border border-border/50 hover:border-primary/20 hover:shadow-soft transition-all duration-300">
+                <stat.icon className="h-5 w-5 text-primary mb-2" />
+                <span className="text-xl font-bold">{stat.value}</span>
+                <span className="text-xs text-muted-foreground">{stat.label}</span>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
       {/* Products Section */}
-      <section className="py-12 px-4">
-        <div className="container mx-auto">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 animate-fade-in">
-            <h2 className="font-serif text-3xl font-bold">Catálogo</h2>
+      <section className="py-16 px-4 bg-secondary/30">
+        <div className="container mx-auto max-w-6xl">
+          {/* Section Header */}
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-8">
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp className="h-5 w-5 text-primary" />
+                <span className="text-sm font-medium text-primary uppercase tracking-wider">Catálogo</span>
+              </div>
+              <h2 className="font-serif text-3xl md:text-4xl font-bold">Nossos Produtos</h2>
+            </div>
+            
             <Tabs value={regionFilter} onValueChange={(v) => setRegionFilter(v as any)}>
-              <TabsList className="transition-smooth">
-                <TabsTrigger value="all" className="transition-smooth">Todos</TabsTrigger>
-                <TabsTrigger value="Brasil" className="transition-smooth">Brasil</TabsTrigger>
-                <TabsTrigger value="Angola" className="transition-smooth">Angola</TabsTrigger>
+              <TabsList className="h-11 p-1 bg-card border border-border">
+                <TabsTrigger value="all" className="gap-2 px-4">
+                  <Globe className="h-4 w-4" />
+                  Todos
+                </TabsTrigger>
+                <TabsTrigger value="Brasil" className="gap-2 px-4">
+                  Brasil
+                </TabsTrigger>
+                <TabsTrigger value="Angola" className="gap-2 px-4">
+                  Angola
+                </TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
           
-          <p className="text-muted-foreground mb-8 text-center sm:text-left animate-fade-in">
-            💡 Clique em qualquer produto para ver detalhes completos, ler avaliações e deixar sua opinião!
-          </p>
+          {/* Info Banner */}
+          <div className="flex items-center gap-3 p-4 rounded-xl bg-primary/5 border border-primary/10 mb-8">
+            <div className="flex items-center justify-center h-10 w-10 rounded-full bg-primary/10">
+              <Sparkles className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-sm font-medium">Clique em qualquer produto para ver detalhes</p>
+              <p className="text-xs text-muted-foreground">Leia avaliações e deixe sua opinião</p>
+            </div>
+          </div>
 
           {loading ? (
-            <div className="text-center py-12">Carregando produtos...</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="aspect-[3/4] rounded-2xl bg-card animate-pulse" />
+              ))}
+            </div>
+          ) : filteredProducts.length === 0 ? (
+            <div className="text-center py-16">
+              <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-lg font-medium">Nenhum produto encontrado</p>
+              <p className="text-sm text-muted-foreground">Tente selecionar outra região</p>
+            </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {filteredProducts.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  id={product.id}
-                  name={product.name}
-                  price={product.price}
-                  currency={product.currency}
-                  image={getProductImage(product.image_url)}
-                  category={product.category}
-                />
+              {filteredProducts.map((product, index) => (
+                <div 
+                  key={product.id} 
+                  className="animate-fade-in"
+                  style={{ animationDelay: `${index * 0.05}s` }}
+                >
+                  <ProductCard
+                    id={product.id}
+                    name={product.name}
+                    price={product.price}
+                    currency={product.currency}
+                    image={getProductImage(product.image_url)}
+                    category={product.category}
+                  />
+                </div>
               ))}
             </div>
           )}
         </div>
       </section>
 
+      {/* Features Section */}
+      <section className="py-16 px-4">
+        <div className="container mx-auto max-w-6xl">
+          <div className="text-center mb-12">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <Zap className="h-5 w-5 text-primary" />
+              <span className="text-sm font-medium text-primary uppercase tracking-wider">Por que EVS?</span>
+            </div>
+            <h2 className="font-serif text-3xl md:text-4xl font-bold">Qualidade e Estilo</h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[
+              {
+                icon: Shield,
+                title: "Qualidade Garantida",
+                description: "Todos os produtos passam por rigoroso controle de qualidade"
+              },
+              {
+                icon: Truck,
+                title: "Entrega Rápida",
+                description: "Enviamos para Brasil e Angola com rastreamento completo"
+              },
+              {
+                icon: Award,
+                title: "Estilo Exclusivo",
+                description: "Designs únicos que definem tendências na moda"
+              }
+            ].map((feature, i) => (
+              <div 
+                key={i} 
+                className="group p-6 rounded-2xl bg-card border border-border/50 hover:border-primary/20 hover:shadow-medium transition-all duration-300"
+              >
+                <div className="flex items-center justify-center h-12 w-12 rounded-xl bg-primary/10 mb-4 group-hover:bg-primary/20 transition-colors">
+                  <feature.icon className="h-6 w-6 text-primary" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
+                <p className="text-sm text-muted-foreground">{feature.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Beta Notice */}
+      <section className="py-8 px-4">
+        <div className="container mx-auto max-w-6xl">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-6 rounded-2xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/10">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center justify-center h-12 w-12 rounded-full bg-primary/10">
+                <Clock className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold">Acesso Antecipado Beta</h3>
+                  <Badge variant="outline" className="text-[10px] border-primary/30 text-primary">
+                    <Sparkles className="h-2.5 w-2.5 mr-1" />
+                    BETA
+                  </Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">Você está usando a versão de desenvolvimento do EVS Fashion</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <CheckCircle2 className="h-4 w-4 text-green-500" />
+              <span>Sistema Ativo</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Footer */}
-      <footer className="border-t border-border py-16 px-4 mt-12 bg-card relative overflow-hidden">
-        <div className="absolute inset-0 bg-[var(--gradient-hero)] opacity-50" />
-        <div className="container mx-auto text-center relative z-10">
-          <div className="inline-flex items-center gap-2 mb-6">
-            <h3 className="font-serif text-3xl font-bold">EVS Fashion</h3>
-            <Badge variant="outline" className="text-[10px] border-primary/30 text-primary">BETA</Badge>
+      <footer className="border-t border-border py-12 px-4 bg-card">
+        <div className="container mx-auto max-w-6xl">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+            {/* Brand */}
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <h3 className="font-serif text-2xl font-bold">EVS Fashion</h3>
+                <Badge variant="outline" className="text-[10px] border-primary/30 text-primary">
+                  <Zap className="h-2.5 w-2.5 mr-1" />
+                  BETA
+                </Badge>
+              </div>
+              <p className="text-sm text-muted-foreground mb-4">
+                Mais Que Moda, É Identidade.
+              </p>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Clock className="h-3 w-3" />
+                <span>Versão 0.1.0 Beta</span>
+              </div>
+            </div>
+
+            {/* Links */}
+            <div>
+              <h4 className="font-semibold mb-4">Links</h4>
+              <div className="space-y-2">
+                <a href="#" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  <Package className="h-4 w-4" />
+                  Produtos
+                </a>
+                <a href="#" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  <User className="h-4 w-4" />
+                  Minha Conta
+                </a>
+                <a href="#" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  <Shield className="h-4 w-4" />
+                  Suporte
+                </a>
+              </div>
+            </div>
+
+            {/* Contact */}
+            <div>
+              <h4 className="font-semibold mb-4">Contato</h4>
+              <div className="space-y-2">
+                <a href="#" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  <Instagram className="h-4 w-4" />
+                  @evs_oficial
+                </a>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <User className="h-4 w-4" />
+                  CEO: Hélio Evaristo
+                </div>
+              </div>
+            </div>
           </div>
-          <p className="text-muted-foreground mb-6 text-lg">
-            Mais Que Moda, É Identidade.
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-4 text-sm mb-8">
-            <a href="#" className="px-4 py-2 rounded-full bg-secondary hover:bg-primary hover:text-primary-foreground transition-all duration-300">
-              📸 Instagram: @evs_oficial
-            </a>
-            <span className="px-4 py-2 rounded-full bg-secondary">
-              👔 CEO: Hélio Evaristo
-            </span>
-          </div>
-          <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-            <span>© 2026 EVS Fashion</span>
-            <span>•</span>
-            <span>Todos os direitos reservados</span>
-            <span>•</span>
-            <span className="text-primary">v0.1.0 Beta</span>
+
+          {/* Bottom */}
+          <div className="pt-8 border-t border-border flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
+            <span>© 2026 EVS Fashion. Todos os direitos reservados.</span>
+            <div className="flex items-center gap-4">
+              <span className="flex items-center gap-1">
+                <Globe className="h-3 w-3" />
+                Brasil & Angola
+              </span>
+              <span className="flex items-center gap-1">
+                <Sparkles className="h-3 w-3 text-primary" />
+                Acesso Antecipado
+              </span>
+            </div>
           </div>
         </div>
       </footer>
+
+      {/* ChatBot */}
+      <ChatBot />
     </div>
   );
 };
